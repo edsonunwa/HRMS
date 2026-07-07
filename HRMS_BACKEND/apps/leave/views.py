@@ -35,7 +35,7 @@ class LeaveBalanceListView(generics.ListAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role in ('hr_officer', 'hr_director', 'admin'):
+        if user.role in ('hr_officer', 'admin'):
             emp_id = self.request.query_params.get('employee')
             if emp_id:
                 return LeaveBalance.objects.filter(employee_id=emp_id)
@@ -51,7 +51,7 @@ class LeaveRequestListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role in ('hr_officer', 'hr_director', 'admin'):
+        if user.role in ('hr_officer', 'admin'):
             return LeaveRequest.objects.select_related('employee', 'leave_type').all()
         if user.role == 'department_head':
             dept = user.employee_profile.department
@@ -65,7 +65,7 @@ class LeaveRequestDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role in ('hr_officer', 'hr_director', 'admin', 'department_head'):
+        if user.role in ('hr_officer', 'admin', 'department_head'):
             return LeaveRequest.objects.all()
         return LeaveRequest.objects.filter(employee=user.employee_profile)
 
@@ -93,7 +93,7 @@ class ApproveLeaveView(APIView):
         )
 
         # Final HR approval sets the leave request status
-        if request.user.role in ('hr_officer', 'hr_director', 'admin'):
+        if request.user.role in ('hr_officer', 'admin'):
             leave.status = decision
             leave.save()
             if decision == 'approved':

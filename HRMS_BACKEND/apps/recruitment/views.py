@@ -26,7 +26,7 @@ class JobPostingListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         qs = JobPosting.objects.select_related('department', 'posted_by').all()
         if not (self.request.user.is_authenticated and
-                self.request.user.role in ('hr_officer','hr_director','admin')):
+                self.request.user.role in ('hr_officer','admin')):
             qs = qs.filter(status='open')
         return qs
 
@@ -45,7 +45,7 @@ class ApplicationListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role in ('hr_officer','hr_director','admin','department_head'):
+        if user.role in ('hr_officer','admin','department_head'):
             return JobApplication.objects.select_related('applicant','job').all()
         return JobApplication.objects.filter(applicant=user)
 
@@ -56,7 +56,7 @@ class ApplicationDetailView(generics.RetrieveUpdateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role in ('hr_officer','hr_director','admin'):
+        if user.role in ('hr_officer','admin'):
             return JobApplication.objects.all()
         return JobApplication.objects.filter(applicant=user)
 

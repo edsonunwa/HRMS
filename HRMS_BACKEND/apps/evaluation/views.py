@@ -28,7 +28,7 @@ class KPIListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role in ("hr_officer","hr_director","admin","department_head"):
+        if user.role in ("hr_officer","admin","department_head"):
             return KPI.objects.all()
         return KPI.objects.filter(employee=user.employee_profile)
 
@@ -48,7 +48,7 @@ class ReviewListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role in ("hr_officer","hr_director","admin"):
+        if user.role in ("hr_officer","admin"):
             return PerformanceReview.objects.all()
         if user.role == "department_head":
             return PerformanceReview.objects.filter(employee__department=user.employee_profile.department)

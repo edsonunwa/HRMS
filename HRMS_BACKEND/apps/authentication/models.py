@@ -3,10 +3,7 @@ from django.db import models
 
 class ROLES:
     HR_OFFICER        = 'hr_officer'
-    HR_DIRECTOR       = 'hr_director'
     DEPARTMENT_HEAD   = 'department_head'
-    SENIOR_MANAGEMENT = 'senior_management'
-    BOARD             = 'board'
     EMPLOYEE          = 'employee'
     APPLICANT         = 'applicant'
     GRADUATE_TRAINEE  = 'graduate_trainee'
@@ -15,10 +12,7 @@ class ROLES:
 
 ROLE_CHOICES = [
     (ROLES.HR_OFFICER,        'HR Officer'),
-    (ROLES.HR_DIRECTOR,       'HR Director'),
     (ROLES.DEPARTMENT_HEAD,   'Department Head'),
-    (ROLES.SENIOR_MANAGEMENT, 'Senior Management'),
-    (ROLES.BOARD,             'Board of Directors'),
     (ROLES.EMPLOYEE,          'Employee'),
     (ROLES.APPLICANT,         'Job Applicant'),
     (ROLES.GRADUATE_TRAINEE,  'Graduate Trainee'),

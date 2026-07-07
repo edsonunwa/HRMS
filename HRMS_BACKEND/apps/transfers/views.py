@@ -18,7 +18,7 @@ class TransferListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role in ("hr_officer","hr_director","admin","senior_management","board"):
+        if user.role in ("hr_officer","admin"):
             return Transfer.objects.select_related("employee","from_department","to_department").all()
         if user.role == "department_head":
             dept = user.employee_profile.department

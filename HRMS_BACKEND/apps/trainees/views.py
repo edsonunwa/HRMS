@@ -30,7 +30,7 @@ class TraineeListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role in ("hr_officer","hr_director","admin"):
+        if user.role in ("hr_officer","admin"):
             return Trainee.objects.all()
         if user.role == "department_head":
             return Trainee.objects.filter(department=user.employee_profile.department)

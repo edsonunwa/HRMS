@@ -2,6 +2,11 @@
 from pathlib import Path
 from decouple import config, Csv
 from datetime import timedelta
+import os 
+from dotenv import load_dotenv
+from urllib.parse import urlparse, parse_qsl
+
+load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -67,18 +72,17 @@ TEMPLATES = [{
 
 WSGI_APPLICATION = "hrms_project.wsgi.application"
 
+tmpPostgres = urlparse(os.getenv("DATABASE_URL"))
+
 DATABASES = {
-    "default": {
-        "ENGINE":   "django.db.backends.mysql",
-        "NAME":     config("DB_NAME",     default="hrms_db"),
-        "USER":     config("DB_USER",     default="root"),
-        "PASSWORD": config("DB_PASSWORD", default=""),
-        "HOST":     config("DB_HOST",     default="127.0.0.1"),
-        "PORT":     config("DB_PORT",     default="3306"),
-        "OPTIONS": {
-            "charset": "utf8mb4",
-            "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
-        },
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': tmpPostgres.path.replace('/', ''),
+        'USER': tmpPostgres.username,
+        'PASSWORD': tmpPostgres.password,
+        'HOST': tmpPostgres.hostname,
+        'PORT': 5432,
+        'OPTIONS': dict(parse_qsl(tmpPostgres.query)),
     }
 }
 
