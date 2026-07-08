@@ -46,6 +46,7 @@ function GenericFormFields({ fields, form, setField }) {
 }
 
 function SimpleResourceTab({ service, fields, columns, canWrite }) {
+
   const { data, loading, error, refetch } = useApiResource(service);
   const [modalMode, setModalMode] = useState(null); // 'create' | editingRow | null
   const [formError, setFormError] = useState(null);
@@ -377,6 +378,130 @@ const ALL_TABS = [
   { key: 'positions', label: 'Positions', canRead: (role) => IS_HR_OR_ADMIN.includes(role) },
 ];
 
+function PositionsTab({ canWrite }) {
+  const { data: departmentsData, loading: departmentsLoading, error: departmentsError } = useApiResource(departmentsService);
+  const departments = departmentsData || [];
+
+
+  const { data, loading, error, refetch } = useApiResource(positionsService);
+  const [modalMode, setModalMode] = useState(null);
+  const [formError, setFormError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const editing = modalMode && modalMode !== 'create' ? modalMode : null;
+  const isOpen = modalMode !== null;
+  const [form, setForm] = useState({ title: '', description: '', department: '' });
+
+  function setField(key, value) {
+    setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  function openCreate() {
+    setFormError(null);
+    setForm({ title: '', description: '', department: '' });
+    setModalMode('create');
+  }
+  function openEdit(row) {
+    setFormError(null);
+    setForm({
+      title: row.title || '',
+      description: row.description || '',
+      department: row.department?.id ?? row.department ?? '',
+    });
+    setModalMode(row);
+  }
+  function close() {
+    setModalMode(null);
+  }
+
+  async function handleDelete(row) {
+    if (!window.confirm('Delete this record?')) return;
+    await positionsService.remove(row.id);
+    refetch();
+  }
+
+  async function handleFormSubmit(e) {
+    e.preventDefault();
+    setSubmitting(true);
+    setFormError(null);
+    try {
+      const payload = {
+        title: form.title,
+        description: form.description || '',
+        department: form.department,
+      };
+      if (editing) {
+        await positionsService.update(editing.id, payload);
+      } else {
+        await positionsService.create(payload);
+      }
+      close();
+      refetch();
+    } catch (err) {
+      setFormError(err.response?.data ? JSON.stringify(err.response.data) : 'Save failed.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const columns = [
+    { key: 'title', label: 'Title' },
+    { key: 'department', label: 'Department', render: (r) => r.department?.name || r.department },
+    { key: 'grade', label: 'Grade', render: (r) => r.grade?.title || r.grade },
+    { key: 'is_active', label: 'Active', render: (r) => (r.is_active ? 'Yes' : 'No') },
+  ];
+
+  return (
+    <div className={styles.card}>
+      {(error || departmentsError) && <div className={styles.errorBanner}>{JSON.stringify(error?.detail || departmentsError?.detail || error || departmentsError)}</div>}
+      {canWrite && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--space-md)' }}>
+          <button className={styles.btnPrimary} onClick={openCreate}><FiPlus /> Add</button>
+        </div>
+      )}
+
+      <DataTable
+        columns={columns}
+        rows={data}
+        loading={loading || departmentsLoading}
+        actions={canWrite ? (row) => (
+          <>
+            <button className={styles.iconBtn} onClick={() => openEdit(row)}><FiEdit2 /></button>
+            <button className={`${styles.iconBtn} ${styles.dangerBtn}`} onClick={() => handleDelete(row)}><FiTrash2 /></button>
+          </>
+        ) : undefined}
+      />
+
+      {isOpen && (
+        <FormModal
+          title={editing ? 'Edit Record' : 'Add Record'}
+          onClose={close}
+          onSubmit={handleFormSubmit}
+          submitting={submitting}
+          error={formError}
+        >
+          <div className={styles.field}>
+            <label>Title</label>
+            <input value={form.title} onChange={(e) => setField('title', e.target.value)} required />
+          </div>
+          <div className={styles.row2}>
+            <div className={styles.field}>
+              <label>Department</label>
+              <select value={form.department} onChange={(e) => setField('department', e.target.value)} required>
+                <option value="">—</option>
+                {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+            </div>
+            <div className={styles.field}>
+              <label>Description</label>
+              <input value={form.description} onChange={(e) => setField('description', e.target.value)} />
+            </div>
+          </div>
+        </FormModal>
+      )}
+    </div>
+  );
+}
+
 export default function EmployeeList() {
   const { user } = useAuth();
   const visibleTabs = ALL_TABS.filter((t) => t.canRead(user?.role));
@@ -443,20 +568,7 @@ export default function EmployeeList() {
         />
       )}
       {tab === 'positions' && (
-        <SimpleResourceTab
-          service={positionsService}
-          canWrite={canWriteLookups}
-          columns={[
-            { key: 'title', label: 'Title' },
-            { key: 'department', label: 'Department', render: (r) => r.department?.name || r.department },
-            { key: 'grade', label: 'Grade', render: (r) => r.grade?.title || r.grade },
-            { key: 'is_active', label: 'Active', render: (r) => (r.is_active ? 'Yes' : 'No') },
-          ]}
-          fields={[
-            { key: 'title', label: 'Title', required: true },
-            { key: 'description', label: 'Description' },
-          ]}
-        />
+        <PositionsTab canWrite={canWriteLookups} />
       )}
     </DashboardLayout>
   );
