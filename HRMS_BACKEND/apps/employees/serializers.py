@@ -25,7 +25,7 @@ class GradeSerializer(serializers.ModelSerializer):
 
 class PositionSerializer(serializers.ModelSerializer):
     department_name = serializers.ReadOnlyField(source='department.name')
-    grade_title     = serializers.ReadOnlyField(source='grade.title')
+    #grade_title     = serializers.ReadOnlyField(source='grade.title')
 
     class Meta:
         model  = Position
