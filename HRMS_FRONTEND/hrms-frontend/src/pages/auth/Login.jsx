@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FiUser, FiLock, FiShield, FiEye, FiEyeOff, FiChevronDown, FiArrowRight, FiZap } from 'react-icons/fi';
+import { FiUser, FiLock, FiEye, FiEyeOff, FiArrowRight, FiZap } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/authService';
 import { ROLES } from '../../utils/constants';
@@ -17,24 +17,13 @@ const DEMO_USERS = [
   
 ];
 
-const ROLE_OPTIONS = [
-  { value: ROLES.HR_OFFICER,       label: 'HR Officer' },
-  { value: ROLES.HR_DIRECTOR,      label: 'HR Director' },
-  { value: ROLES.DEPARTMENT_HEAD,  label: 'Department Head' },
-  { value: ROLES.SENIOR_MANAGEMENT,label: 'Senior Management' },
-  { value: ROLES.BOARD,            label: 'Board of Directors' },
-  { value: ROLES.EMPLOYEE,         label: 'Employee' },
-  
-  { value: ROLES.ADMIN,            label: 'System Administrator' },
-];
-
 function Login() {
   const { login, demoLogin, loading, error } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname;
 
-  const [form, setForm] = useState({ username: '', password: '', role: '' });
+  const [form, setForm] = useState({ username: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [showDemo, setShowDemo] = useState(false);
@@ -136,34 +125,9 @@ function Login() {
             </div>
           </div>
 
-          {/* User Role */}
-          <div className={styles.fieldGroup}>
-            <div className={styles.fieldHeader}>
-              <label htmlFor="role" className={styles.label}>User Role</label>
-              <span className={styles.required}>Required</span>
-            </div>
-            <div className={styles.inputWrap}>
-              <FiShield className={styles.inputIcon} />
-              <select
-                id="role"
-                name="role"
-                required
-                value={form.role}
-                onChange={handleChange}
-                className={styles.select}
-              >
-                <option value="" disabled>Select your role</option>
-                {ROLE_OPTIONS.map((r) => (
-                  <option key={r.value} value={r.value}>{r.label}</option>
-                ))}
-              </select>
-              <FiChevronDown className={styles.chevron} />
-            </div>
-          </div>
-
           <button
             type="submit"
-            disabled={loading || !form.username || !form.password || !form.role}
+            disabled={loading || !form.username || !form.password}
             className={styles.submitBtn}
           >
             {loading ? 'Signing in…' : 'Login'} <FiArrowRight />

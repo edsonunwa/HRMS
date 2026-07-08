@@ -63,13 +63,13 @@ function Sidebar() {
       </nav>
 
       {/* New Request */}
-      <button className={styles.newRequestBtn} onClick={() => {}}>
+      <button className={styles.newRequestBtn} onClick={() => navigate('/leave?action=new')}>
         <FiPlus /> New Request
       </button>
 
       {/* Bottom links */}
       <div className={styles.bottom}>
-        <a href="/help" className={styles.bottomLink}>
+        <a href="mailto:support@nwsc.co.ug" className={styles.bottomLink}>
           <FiHelpCircle /> Help Center
         </a>
         <button className={styles.bottomLink} onClick={handleLogout}>

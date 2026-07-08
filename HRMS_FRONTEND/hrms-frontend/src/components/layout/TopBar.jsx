@@ -1,11 +1,13 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import { useNavigate } from 'react-router-dom';
 import { FiSearch, FiBell, FiMessageSquare, FiGrid } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import styles from './TopBar.module.css';
 
 function TopBar({ portalLabel, searchPlaceholder }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const initials = user
     ? (user.first_name?.[0] || '') + (user.last_name?.[0] || user.username?.[0] || '')
@@ -32,14 +34,14 @@ function TopBar({ portalLabel, searchPlaceholder }) {
       </div>
 
       <div className={styles.actions}>
-        <button className={styles.iconBtn} aria-label="Notifications">
+        <button className={styles.iconBtn} aria-label="Notifications" onClick={() => navigate('/leave')}>
           <FiBell />
           <span className={styles.badge} aria-hidden="true" />
         </button>
-        <button className={styles.iconBtn} aria-label="Messages">
+        <button className={styles.iconBtn} aria-label="Messages" onClick={() => window.location.href = 'mailto:hr@nwsc.co.ug'}>
           <FiMessageSquare />
         </button>
-        <button className={styles.iconBtn} aria-label="Apps">
+        <button className={styles.iconBtn} aria-label="Apps" onClick={() => navigate('/reports')}>
           <FiGrid />
         </button>
 

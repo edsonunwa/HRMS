@@ -2,6 +2,7 @@
 from pathlib import Path
 from decouple import config, Csv
 from datetime import timedelta
+from config import get_db_config
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -68,18 +69,7 @@ TEMPLATES = [{
 WSGI_APPLICATION = "hrms_project.wsgi.application"
 
 DATABASES = {
-    "default": {
-        "ENGINE":   "django.db.backends.mysql",
-        "NAME":     config("DB_NAME",     default="hrms_db"),
-        "USER":     config("DB_USER",     default="root"),
-        "PASSWORD": config("DB_PASSWORD", default=""),
-        "HOST":     config("DB_HOST",     default="127.0.0.1"),
-        "PORT":     config("DB_PORT",     default="3306"),
-        "OPTIONS": {
-            "charset": "utf8mb4",
-            "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
-        },
-    }
+    "default": get_db_config()
 }
 
 AUTH_PASSWORD_VALIDATORS = [
