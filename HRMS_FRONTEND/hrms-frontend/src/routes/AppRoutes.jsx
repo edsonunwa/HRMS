@@ -23,6 +23,7 @@ const AdminDashboard          = lazy(() => import('../pages/dashboard/AdminDashb
 
 // Feature modules
 const EmployeeList    = lazy(() => import('../pages/employees/EmployeeList'));
+const EmployeeDetail  = lazy(() => import('../pages/employees/EmployeeDetail'));
 const ManpowerList    = lazy(() => import('../pages/manpower/ManpowerList'));
 const RecruitmentList = lazy(() => import('../pages/recruitment/RecruitmentList'));
 const LeaveList       = lazy(() => import('../pages/leave/LeaveList'));
@@ -119,6 +120,9 @@ function AppRoutes() {
         {/* Feature modules — visible to any authenticated user; pages self-scope by role */}
         <Route path="/workforce" element={
           <ProtectedRoute><EmployeeList /></ProtectedRoute>
+        } />
+        <Route path="/workforce/:id" element={
+          <ProtectedRoute><EmployeeDetail /></ProtectedRoute>
         } />
         <Route path="/manpower" element={
           <ProtectedRoute><ManpowerList /></ProtectedRoute>
