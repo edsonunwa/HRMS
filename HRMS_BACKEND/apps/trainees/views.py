@@ -33,7 +33,10 @@ class TraineeListCreateView(generics.ListCreateAPIView):
         if user.role in ("hr_officer","hr_director","admin"):
             return Trainee.objects.all()
         if user.role == "department_head":
-            return Trainee.objects.filter(department=user.employee_profile.department)
+            profile = user.get_employee_profile()
+            if profile is None:
+                return Trainee.objects.none()
+            return Trainee.objects.filter(department=profile.department)
         try:
             return Trainee.objects.filter(user=user)
         except Exception:

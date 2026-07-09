@@ -30,7 +30,7 @@ class KPIListCreateView(generics.ListCreateAPIView):
         user = self.request.user
         if user.role in ("hr_officer","hr_director","admin","department_head"):
             return KPI.objects.all()
-        return KPI.objects.filter(employee=user.employee_profile)
+        return KPI.objects.filter(employee=user.get_employee_profile())
 
 
 class KPIDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -51,8 +51,14 @@ class ReviewListCreateView(generics.ListCreateAPIView):
         if user.role in ("hr_officer","hr_director","admin"):
             return PerformanceReview.objects.all()
         if user.role == "department_head":
-            return PerformanceReview.objects.filter(employee__department=user.employee_profile.department)
-        return PerformanceReview.objects.filter(employee=user.employee_profile)
+            profile = user.get_employee_profile()
+            if profile is None:
+                return PerformanceReview.objects.none()
+            return PerformanceReview.objects.filter(employee__department=profile.department)
+        profile = user.get_employee_profile()
+        if profile is None:
+            return PerformanceReview.objects.none()
+        return PerformanceReview.objects.filter(employee=profile)
 
 
 class ReviewDetailView(generics.RetrieveUpdateAPIView):

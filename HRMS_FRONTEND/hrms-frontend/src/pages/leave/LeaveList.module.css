@@ -18,6 +18,12 @@
 .dangerBtn:hover { background:#fff3f3; }
 .successBtn { color:var(--color-success); border-color:var(--color-success); }
 .successBtn:hover { background:#e6f4ea; }
+.warnBtn { color:#b45309; border-color:#b45309; }
+.warnBtn:hover { background:#fffbeb; }
+
+.overrideWarning { display:flex; align-items:flex-start; gap:8px; background:#fffbeb; border-left:3px solid #b45309; padding:var(--space-sm) var(--space-md); border-radius:var(--radius-sm); margin-bottom:var(--space-md); font-size:var(--font-size-sm); color:#92400e; }
+.overrideWarning svg { flex-shrink:0; margin-top:2px; }
+.skippedList { margin:6px 0 6px 16px; padding:0; display:flex; flex-direction:column; gap:3px; }
 
 .field { margin-bottom:var(--space-md); }
 .field label { display:block; font-size:var(--font-size-sm); font-weight:var(--font-weight-medium); color:var(--color-text); margin-bottom:4px; }

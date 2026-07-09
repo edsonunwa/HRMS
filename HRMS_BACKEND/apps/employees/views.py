@@ -74,4 +74,8 @@ class MyProfileView(generics.RetrieveUpdateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_object(self):
-        return self.request.user.employee_profile
+        profile = self.request.user.get_employee_profile()
+        if profile is None:
+            from rest_framework.exceptions import NotFound
+            raise NotFound('No employee profile linked to this account.')
+        return profile

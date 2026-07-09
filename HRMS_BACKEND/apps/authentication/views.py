@@ -63,6 +63,21 @@ class UserListCreateView(generics.ListCreateAPIView):
             return UserCreateSerializer
         return UserSerializer
 
+    def create(self, request, *args, **kwargs):
+        serializer = UserCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+
+
+class UserWithoutEmployeeProfileView(generics.ListAPIView):
+    """GET /api/auth/users/without-profile/ — users not yet linked to an employee record."""
+    serializer_class   = UserSerializer
+    permission_classes = [IsAdmin]
+
+    def get_queryset(self):
+        return User.objects.filter(employee_profile__isnull=True).order_by('username')
+
 
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset           = User.objects.all()

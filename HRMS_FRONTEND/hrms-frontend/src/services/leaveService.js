@@ -15,3 +15,7 @@ leaveRequestsService.approve = async (id, body) => {
   const { data } = await api.post(`/leave/requests/${id}/approve/`, body);
   return data;
 };
+leaveRequestsService.cancel = async (id) => {
+  const { data } = await api.post(`/leave/requests/${id}/cancel/`);
+  return data;
+};

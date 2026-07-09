@@ -3,7 +3,7 @@ from .views import (
     LeaveTypeListCreateView, LeaveTypeDetailView,
     LeaveBalanceListView,
     LeaveRequestListCreateView, LeaveRequestDetailView,
-    ApproveLeaveView,
+    ApproveLeaveView, CancelLeaveView,
 )
 
 urlpatterns = [
@@ -13,4 +13,5 @@ urlpatterns = [
     path('requests/',                  LeaveRequestListCreateView.as_view(),name='leave_request_list'),
     path('requests/<int:pk>/',         LeaveRequestDetailView.as_view(),    name='leave_request_detail'),
     path('requests/<int:pk>/approve/', ApproveLeaveView.as_view(),          name='leave_approve'),
+    path('requests/<int:pk>/cancel/',  CancelLeaveView.as_view(),           name='leave_cancel'),
 ]

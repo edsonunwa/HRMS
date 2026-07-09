@@ -79,3 +79,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def has_any_role(self, *roles):
         return self.role in roles
+
+    def get_employee_profile(self):
+        """Return the linked Employee profile or None (avoids RelatedObjectDoesNotExist)."""
+        return getattr(self, 'employee_profile', None)
