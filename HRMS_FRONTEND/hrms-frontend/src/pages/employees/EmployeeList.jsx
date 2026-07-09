@@ -6,6 +6,7 @@ import FormModal from '../../components/common/FormModal';
 import StatusBadge from '../../components/common/StatusBadge';
 import EmployeePicker from '../../components/common/EmployeePicker';
 import { useApiResource } from '../../hooks/useApiResource';
+import { useSearch } from '../../hooks/useSearch';
 import { useAuth } from '../../context/AuthContext';
 import { employeesService, departmentsService, gradesService, positionsService } from '../../services/employeesService';
 import { userService } from '../../services/userService';
@@ -45,9 +46,10 @@ function GenericFormFields({ fields, form, setField }) {
   );
 }
 
-function SimpleResourceTab({ service, fields, columns, canWrite }) {
+function SimpleResourceTab({ service, fields, columns, searchKeys, canWrite }) {
 
   const { data, loading, error, refetch } = useApiResource(service);
+  const filtered = useSearch(data, searchKeys || []);
   const [modalMode, setModalMode] = useState(null); // 'create' | editingRow | null
   const [formError, setFormError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -108,7 +110,7 @@ function SimpleResourceTab({ service, fields, columns, canWrite }) {
       )}
       <DataTable
         columns={columns}
-        rows={data}
+        rows={filtered}
         loading={loading}
         actions={canWrite ? (row) => (
           <>
@@ -342,6 +344,7 @@ function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, pos
 
 function EmployeesTab({ canWrite }) {
   const { data, loading, error, refetch } = useApiResource(employeesService);
+  const filtered = useSearch(data, ['employee_id', 'full_name', 'department_name', 'position_title', 'employment_status', 'contract_type']);
   const departmentsRes = useApiResource(departmentsService);
   const gradesRes = useApiResource(gradesService);
   const positionsRes = useApiResource(positionsService);
@@ -406,7 +409,7 @@ function EmployeesTab({ canWrite }) {
       )}
       <DataTable
         columns={columns}
-        rows={data}
+        rows={filtered}
         loading={loading}
         actions={canWrite ? (row) => (
           <>
@@ -445,6 +448,7 @@ const ALL_TABS = [
 
 function DepartmentsTab({ canWrite }) {
   const { data, loading, error, refetch } = useApiResource(departmentsService);
+  const filtered = useSearch(data, ['name', 'code', 'region']);
   const [modalMode, setModalMode] = useState(null);
   const [formError, setFormError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -530,7 +534,7 @@ function DepartmentsTab({ canWrite }) {
       )}
       <DataTable
         columns={columns}
-        rows={data}
+        rows={filtered}
         loading={loading}
         actions={canWrite ? (row) => (
           <>
@@ -590,6 +594,7 @@ function PositionsTab({ canWrite }) {
 
 
   const { data, loading, error, refetch } = useApiResource(positionsService);
+  const filtered = useSearch(data, ['title', 'department.name', 'grade.title']);
   const [modalMode, setModalMode] = useState(null);
   const [formError, setFormError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -667,7 +672,7 @@ function PositionsTab({ canWrite }) {
 
       <DataTable
         columns={columns}
-        rows={data}
+        rows={filtered}
         loading={loading || departmentsLoading}
         actions={canWrite ? (row) => (
           <>
@@ -744,6 +749,7 @@ export default function EmployeeList() {
         <SimpleResourceTab
           service={gradesService}
           canWrite={canWriteLookups}
+          searchKeys={['title', 'level']}
           columns={[
             { key: 'title', label: 'Title' },
             { key: 'level', label: 'Level' },

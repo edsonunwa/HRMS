@@ -13,7 +13,6 @@ function Login() {
 
   const [form, setForm] = useState({ username: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
-  const [imgError, setImgError] = useState(false);
 
   function handleChange(e) {
     setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
@@ -38,16 +37,11 @@ function Login() {
     <div className={styles.page}>
       <div className={styles.card}>
         {/* Logo */}
-        {!imgError ? (
-          <img
-            src="/nwsc-logo.png"
+        <img
+            src="/logo.png"
             alt="NWSC Logo"
             className={styles.logo}
-            onError={() => setImgError(true)}
           />
-        ) : (
-          <div className={styles.logoFallback}><img src="/logo.png" alt="Company Logo" className="h-16 w-auto mx-auto" /></div>
-        )}
 
         <h1 className={styles.title}>NATIONAL WATER AND SEWERAGE CORPORATION</h1>
         <p className={styles.subtitle}>Human Resource Management System</p>

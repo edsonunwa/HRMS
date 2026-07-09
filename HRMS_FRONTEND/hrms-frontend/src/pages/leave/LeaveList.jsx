@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { FiPlus, FiEdit2, FiTrash2, FiCheck, FiX, FiAlertTriangle } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import DataTable from '../../components/common/DataTable';
 import FormModal from '../../components/common/FormModal';
 import StatusBadge from '../../components/common/StatusBadge';
 import { useApiResource } from '../../hooks/useApiResource';
+import { useSearch } from '../../hooks/useSearch';
 import { useAuth } from '../../context/AuthContext';
 import { leaveTypesService, leaveBalancesService, leaveRequestsService } from '../../services/leaveService';
 import { IS_HR_OR_ADMIN, IS_DEPARTMENT_HEAD_OR_ABOVE, ROLES } from '../../utils/constants';
@@ -54,6 +56,7 @@ function LeaveTypeFormModal({ editing, onClose, onSaved }) {
 
 function LeaveTypesTab({ canWrite }) {
   const { data, loading, error, refetch } = useApiResource(leaveTypesService);
+  const filtered = useSearch(data, ['name', 'description']);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
 
@@ -84,7 +87,7 @@ function LeaveTypesTab({ canWrite }) {
       )}
       <DataTable
         columns={columns}
-        rows={data}
+        rows={filtered}
         loading={loading}
         actions={canWrite ? (row) => (
           <>
@@ -102,6 +105,7 @@ function LeaveTypesTab({ canWrite }) {
 
 function BalancesTab() {
   const { data, loading, error } = useApiResource(leaveBalancesService);
+  const filtered = useSearch(data, ['leave_type_name', 'year']);
   const columns = [
     { key: 'employee', label: 'Employee ID' },
     { key: 'leave_type_name', label: 'Leave Type' },
@@ -113,7 +117,7 @@ function BalancesTab() {
   return (
     <div className={styles.card}>
       {error && <div className={styles.errorBanner}>{error}</div>}
-      <DataTable columns={columns} rows={data} loading={loading} emptyMessage="No leave balances found." />
+      <DataTable columns={columns} rows={filtered} loading={loading} emptyMessage="No leave balances found." />
     </div>
   );
 }
@@ -236,7 +240,9 @@ function getSkippedLevels(row, myLevel) {
 
 function RequestsTab({ canApprove }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { data, loading, error, refetch } = useApiResource(leaveRequestsService);
+  const filtered = useSearch(data, ['employee_name', 'leave_type_name', 'status', 'start_date', 'end_date']);
   const leaveTypesRes = useApiResource(leaveTypesService);
   const [modalOpen, setModalOpen] = useState(false);
   const [commentModal, setCommentModal] = useState(null); // { row, decision, override }
@@ -262,12 +268,19 @@ function RequestsTab({ canApprove }) {
       ? 'Recall this approved leave request? The balance will be restored.'
       : 'Cancel this leave request?';
     if (!window.confirm(msg)) return;
-    await leaveRequestsService.cancel(row.id);
-    refetch();
+    try {
+      await leaveRequestsService.cancel(row.id);
+      refetch();
+    } catch (err) {
+      const detail = err.response?.data?.detail || 'Action failed.';
+      window.alert(detail);
+    }
   }
 
   const columns = [
-    { key: 'employee_name', label: 'Employee' },
+    { key: 'employee_name', label: 'Employee', render: (r) => (
+      <span className={styles.rowLink} onClick={() => navigate(`/leave/${r.id}`)}>{r.employee_name}</span>
+    )},
     { key: 'leave_type_name', label: 'Type' },
     { key: 'start_date', label: 'Start' },
     { key: 'end_date', label: 'End' },
@@ -284,13 +297,13 @@ function RequestsTab({ canApprove }) {
       </div>
       <DataTable
         columns={columns}
-        rows={data}
+        rows={filtered}
         loading={loading}
         actions={(row) => {
           const isOwner = row.employee_user_id === user?.id;
           const isHR = [ROLES.HR_OFFICER, ROLES.HR_DIRECTOR, ROLES.ADMIN].includes(user?.role);
           const canCancel = row.status === 'pending' && (isOwner || isHR);
-          const canRecall = row.status === 'approved' && (isOwner || isHR);
+          const canRecall = row.status === 'approved' && (isHR || (isOwner && row.start_date > TODAY));
           const cancelBtn = canCancel
             ? <button className={`${styles.iconBtn} ${styles.dangerBtn}`} onClick={() => handleCancel(row)} title="Cancel"><FiTrash2 /></button>
             : canRecall

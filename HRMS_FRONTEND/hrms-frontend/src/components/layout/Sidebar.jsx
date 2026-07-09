@@ -37,7 +37,7 @@ function Sidebar() {
     <aside className={styles.sidebar}>
       {/* Brand */}
       <div className={styles.brand} onClick={() => navigate(dashboardPath)} style={{ cursor: 'pointer' }}>
-        <div className={styles.brandIcon}>N</div>
+        <img src="/logo.png" alt="NWSC" className={styles.brandLogo} />
         <div className={styles.brandText}>
           <div className={styles.brandName}>NWSC HRMS</div>
           <div className={styles.brandSub}>Reliable Governance</div>

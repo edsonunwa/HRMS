@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FiPlus, FiEdit2, FiTrash2, FiUserCheck, FiUserX } from 'react-icons/fi';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { userService } from '../../services/userService';
 import { ROLES, ROLE_LABELS } from '../../utils/constants';
+import { useSearchContext } from '../../context/SearchContext';
 import styles from './UserManagement.module.css';
 
 const ROLE_OPTIONS = Object.values(ROLES);
@@ -174,6 +175,16 @@ export default function UserManagement() {
   const [error, setError] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  const { query } = useSearchContext();
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return users;
+    return users.filter((u) =>
+      [u.username, u.email, u.first_name, u.last_name, u.role_display, u.phone]
+        .some((val) => String(val ?? '').toLowerCase().includes(q))
+    );
+  }, [users, query]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -241,7 +252,7 @@ export default function UserManagement() {
               </tr>
             </thead>
             <tbody>
-              {users.map((u) => (
+              {filtered.map((u) => (
                 <tr key={u.id}>
                   <td>
                     <div className={styles.userCell}>

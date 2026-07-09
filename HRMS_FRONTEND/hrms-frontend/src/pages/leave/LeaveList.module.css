@@ -31,3 +31,6 @@
 .row2 { display:grid; grid-template-columns:1fr 1fr; gap:var(--space-md); }
 .checkboxField { display:flex; align-items:center; gap:6px; margin-bottom:var(--space-md); }
 .checkboxField input { width:auto; }
+
+.rowLink { cursor:pointer; color:var(--color-text); }
+.rowLink:hover { text-decoration:underline; color:var(--color-primary); }

@@ -26,6 +26,7 @@ const EmployeeList    = lazy(() => import('../pages/employees/EmployeeList'));
 const ManpowerList    = lazy(() => import('../pages/manpower/ManpowerList'));
 const RecruitmentList = lazy(() => import('../pages/recruitment/RecruitmentList'));
 const LeaveList       = lazy(() => import('../pages/leave/LeaveList'));
+const LeaveDetail     = lazy(() => import('../pages/leave/LeaveDetail'));
 const TransferList    = lazy(() => import('../pages/transfers/TransferList'));
 const EvaluationList  = lazy(() => import('../pages/evaluation/EvaluationList'));
 const TraineeList     = lazy(() => import('../pages/trainees/TraineeList'));
@@ -36,9 +37,20 @@ function Loading() {
   return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>;
 }
 
-function NotFoundRedirect() {
+function NotFound() {
   const { user } = useAuth();
-  return <Navigate to={user ? (ROLE_DASHBOARD_MAP[user.role] || '/dashboard/employee') : '/login'} replace />;
+  const dashboardPath = user ? (ROLE_DASHBOARD_MAP[user.role] || '/dashboard/employee') : '/login';
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      justifyContent: 'center', height: '100vh', gap: '1rem', textAlign: 'center',
+      fontFamily: 'var(--font-family, sans-serif)', color: 'var(--color-text, #111)',
+    }}>
+      <span style={{ fontSize: '5rem', fontWeight: 700, color: 'var(--color-border, #e5e7eb)', lineHeight: 1 }}>404</span>
+      <p style={{ color: 'var(--color-text-muted, #6b7280)', fontSize: '0.95rem' }}>Page not found.</p>
+      <a href={dashboardPath} style={{ fontSize: '0.9rem', color: 'var(--color-primary, #2563eb)' }}>Go to dashboard</a>
+    </div>
+  );
 }
 
 function AppRoutes() {
@@ -117,6 +129,9 @@ function AppRoutes() {
         <Route path="/leave" element={
           <ProtectedRoute><LeaveList /></ProtectedRoute>
         } />
+        <Route path="/leave/:id" element={
+          <ProtectedRoute><LeaveDetail /></ProtectedRoute>
+        } />
         <Route path="/transfers" element={
           <ProtectedRoute><TransferList /></ProtectedRoute>
         } />
@@ -136,8 +151,8 @@ function AppRoutes() {
         } />
 
         {/* Fallback */}
-        <Route path="/" element={<NotFoundRedirect />} />
-        <Route path="*" element={<NotFoundRedirect />} />
+        <Route path="/" element={<Navigate to={'/login'} replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
   );
