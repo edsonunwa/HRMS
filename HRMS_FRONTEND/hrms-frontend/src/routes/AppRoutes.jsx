@@ -32,6 +32,7 @@ const EvaluationList  = lazy(() => import('../pages/evaluation/EvaluationList'))
 const TraineeList     = lazy(() => import('../pages/trainees/TraineeList'));
 const ReportsOverview = lazy(() => import('../pages/reports/ReportsOverview'));
 const UserManagement  = lazy(() => import('../pages/settings/UserManagement'));
+const SystemLogs      = lazy(() => import('../pages/logs/SystemLogs'));
 
 function Loading() {
   return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>;
@@ -147,6 +148,11 @@ function AppRoutes() {
         <Route path="/settings" element={
           <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
             <UserManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/audit-logs" element={
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+            <SystemLogs />
           </ProtectedRoute>
         } />
 

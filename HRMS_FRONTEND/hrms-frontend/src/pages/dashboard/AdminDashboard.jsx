@@ -84,8 +84,9 @@ export default function AdminDashboard() {
         <div className={styles.threatsCard}>
           <div className={styles.threatsTop}><FiShield className={styles.shieldIcon} /> SYSTEM STATUS</div>
           <div className={styles.threatsNum}>OK</div>
+          <button className={styles.logsBtn} onClick={() => navigate('/audit-logs')}>View Security Logs</button>
           <div className={styles.threatsTxt}>All systems operational</div>
-              <button className={styles.logsBtn} onClick={() => navigate('/settings')}>View Audit Logs</button>
+          <button className={styles.logsBtn} onClick={() => navigate('/audit-logs')}>View Audit Logs</button>
         </div>
       </div>
 
