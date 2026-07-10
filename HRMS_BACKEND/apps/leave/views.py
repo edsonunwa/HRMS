@@ -12,6 +12,7 @@ from .serializers import (
 )
 from apps.authentication.permissions import IsHROrAdmin, IsDepartmentHeadOrAbove
 from apps.authentication.models import ROLES
+from apps.authentication.audit import AuditLogMixin, log_audit_event
 
 # ---------------------------------------------------------------------------
 # Approval chain
@@ -90,7 +91,7 @@ def _next_required_level(leave):
 # Views
 # ---------------------------------------------------------------------------
 
-class LeaveTypeListCreateView(generics.ListCreateAPIView):
+class LeaveTypeListCreateView(AuditLogMixin, generics.ListCreateAPIView):
     queryset           = LeaveType.objects.all()
     serializer_class   = LeaveTypeSerializer
     permission_classes = [IsAuthenticated]
@@ -101,7 +102,7 @@ class LeaveTypeListCreateView(generics.ListCreateAPIView):
         return [IsAuthenticated()]
 
 
-class LeaveTypeDetailView(generics.RetrieveUpdateDestroyAPIView):
+class LeaveTypeDetailView(AuditLogMixin, generics.RetrieveUpdateDestroyAPIView):
     queryset           = LeaveType.objects.all()
     serializer_class   = LeaveTypeSerializer
     permission_classes = [IsHROrAdmin]
@@ -121,7 +122,7 @@ class LeaveBalanceListView(generics.ListAPIView):
         return LeaveBalance.objects.filter(employee=user.get_employee_profile())
 
 
-class LeaveRequestListCreateView(generics.ListCreateAPIView):
+class LeaveRequestListCreateView(AuditLogMixin, generics.ListCreateAPIView):
     serializer_class   = LeaveRequestSerializer
     permission_classes = [IsAuthenticated]
     filter_backends    = [DjangoFilterBackend, filters.OrderingFilter]
@@ -151,7 +152,7 @@ class LeaveRequestListCreateView(generics.ListCreateAPIView):
         return (own | subordinate).distinct()
 
 
-class LeaveRequestDetailView(generics.RetrieveUpdateDestroyAPIView):
+class LeaveRequestDetailView(AuditLogMixin, generics.RetrieveUpdateDestroyAPIView):
     serializer_class   = LeaveRequestSerializer
     permission_classes = [IsAuthenticated]
 
@@ -270,6 +271,15 @@ class ApproveLeaveView(APIView):
         if decision == 'rejected':
             leave.status = 'rejected'
             leave.save(update_fields=['status', 'updated_at'])
+            log_audit_event(
+                action='UPDATE',
+                resource='LeaveRequest',
+                request=request,
+                user=request.user,
+                instance=leave,
+                detail=f'Leave request #{leave.pk} rejected at level {acting_level}',
+                metadata={'decision': decision, 'acting_level': acting_level},
+            )
             return Response({'detail': 'Leave request rejected.'})
 
         # Approval — check if this is the final level
@@ -294,6 +304,15 @@ class ApproveLeaveView(APIView):
             )
             leave.status = 'approved'
             leave.save(update_fields=['status', 'updated_at'])
+            log_audit_event(
+                action='UPDATE',
+                resource='LeaveRequest',
+                request=request,
+                user=request.user,
+                instance=leave,
+                detail=f'Leave request #{leave.pk} approved at final level',
+                metadata={'decision': decision, 'acting_level': acting_level},
+            )
             return Response({'detail': 'Leave request approved.'})
 
         # Not the final level — advance to the next required level
@@ -302,6 +321,15 @@ class ApproveLeaveView(APIView):
         next_level = _next_required_level(leave)
         leave.current_level = next_level
         leave.save(update_fields=['current_level', 'updated_at'])
+        log_audit_event(
+            action='UPDATE',
+            resource='LeaveRequest',
+            request=request,
+            user=request.user,
+            instance=leave,
+            detail=f'Leave request #{leave.pk} approved at level {acting_level}',
+            metadata={'decision': decision, 'acting_level': acting_level, 'next_level': next_level},
+        )
         return Response({'detail': f'Level-{acting_level} approval recorded. Awaiting level-{next_level} approval.'})
 
 
@@ -340,6 +368,14 @@ class CancelLeaveView(APIView):
                 )
             leave.status = 'cancelled'
             leave.save(update_fields=['status', 'updated_at'])
+            log_audit_event(
+                action='UPDATE',
+                resource='LeaveRequest',
+                request=request,
+                user=request.user,
+                instance=leave,
+                detail=f'Leave request #{leave.pk} cancelled',
+            )
             return Response({'detail': 'Leave request cancelled.'})
 
         if leave.status == 'approved':
@@ -355,6 +391,14 @@ class CancelLeaveView(APIView):
             ).update(used_days=F('used_days') - leave.days_requested)
             leave.status = 'recalled'
             leave.save(update_fields=['status', 'updated_at'])
+            log_audit_event(
+                action='UPDATE',
+                resource='LeaveRequest',
+                request=request,
+                user=request.user,
+                instance=leave,
+                detail=f'Leave request #{leave.pk} recalled',
+            )
             return Response({'detail': 'Leave request recalled and balance restored.'})
 
         return Response(

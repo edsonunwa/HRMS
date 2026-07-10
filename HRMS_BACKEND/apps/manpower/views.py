@@ -5,9 +5,10 @@ from django_filters.rest_framework import DjangoFilterBackend
 from .models import ManpowerPlan, EstablishmentPost
 from .serializers import ManpowerPlanSerializer, EstablishmentPostSerializer
 from apps.authentication.permissions import IsHROrAdmin, IsDepartmentHeadOrAbove, IsManagement
+from apps.authentication.audit import AuditLogMixin, log_audit_event
 
 
-class ManpowerPlanListCreateView(generics.ListCreateAPIView):
+class ManpowerPlanListCreateView(AuditLogMixin, generics.ListCreateAPIView):
     queryset           = ManpowerPlan.objects.select_related("department","submitted_by").all()
     serializer_class   = ManpowerPlanSerializer
     permission_classes = [IsDepartmentHeadOrAbove]
@@ -16,7 +17,7 @@ class ManpowerPlanListCreateView(generics.ListCreateAPIView):
     search_fields      = ["title","department__name"]
 
 
-class ManpowerPlanDetailView(generics.RetrieveUpdateDestroyAPIView):
+class ManpowerPlanDetailView(AuditLogMixin, generics.RetrieveUpdateDestroyAPIView):
     queryset           = ManpowerPlan.objects.all()
     serializer_class   = ManpowerPlanSerializer
     permission_classes = [IsDepartmentHeadOrAbove]
@@ -36,10 +37,19 @@ class ApproveManpowerPlanView(APIView):
         plan.status      = decision
         plan.approved_by = request.user
         plan.save()
+        log_audit_event(
+            action='UPDATE',
+            resource='ManpowerPlan',
+            request=request,
+            user=request.user,
+            instance=plan,
+            detail=f'Manpower plan #{plan.pk} {decision}',
+            metadata={'decision': decision},
+        )
         return Response({"detail": f"Plan {decision}."})
 
 
-class EstablishmentPostListCreateView(generics.ListCreateAPIView):
+class EstablishmentPostListCreateView(AuditLogMixin, generics.ListCreateAPIView):
     queryset           = EstablishmentPost.objects.all()
     serializer_class   = EstablishmentPostSerializer
     permission_classes = [IsDepartmentHeadOrAbove]
@@ -47,7 +57,7 @@ class EstablishmentPostListCreateView(generics.ListCreateAPIView):
     filterset_fields   = ["status","manpower_plan","position"]
 
 
-class EstablishmentPostDetailView(generics.RetrieveUpdateDestroyAPIView):
+class EstablishmentPostDetailView(AuditLogMixin, generics.RetrieveUpdateDestroyAPIView):
     queryset           = EstablishmentPost.objects.all()
     serializer_class   = EstablishmentPostSerializer
     permission_classes = [IsHROrAdmin]
