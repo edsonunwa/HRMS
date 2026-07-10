@@ -75,7 +75,12 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         user = self.context['request'].user
-        validated_data['employee'] = user.get_employee_profile()
+        employee = user.get_employee_profile()
+        if employee is None:
+            raise serializers.ValidationError(
+                'You do not have an employee profile. Please contact HR to set up your profile before requesting leave.'
+            )
+        validated_data['employee'] = employee
         return super().create(validated_data)
 
     def validate(self, attrs):
