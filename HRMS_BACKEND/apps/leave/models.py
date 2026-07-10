@@ -14,6 +14,7 @@ class LeaveType(models.Model):
 
     class Meta:
         db_table = 'leave_types'
+        ordering = ['name']
 
     def __str__(self):
         return self.name
