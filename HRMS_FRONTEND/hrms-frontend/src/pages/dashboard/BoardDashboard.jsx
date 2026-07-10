@@ -1,184 +1,200 @@
-import React from 'react';
-import { FiDownload, FiCalendar, FiMaximize2 } from 'react-icons/fi';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { FiDownload, FiCalendar } from 'react-icons/fi';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import { reportsService } from '../../services/reportsService';
+import { employeesService, departmentsService } from '../../services/employeesService';
 import styles from './BoardDashboard.module.css';
 
-const KPI = [
-  { label: 'Total Workforce Cost',   value: 'UGX 1.05B', sub: '87.5% of annual budget',  tag: 'WITHIN TARGET', tagOk: true  },
-  { label: 'Workforce Headcount',    value: '4,821',      sub: 'Target: 5,000 by Dec 2024', tag: '+2.4% QoQ',   tagOk: true  },
-  { label: 'Compliance Score',       value: '96.2%',      sub: 'Audit Q3 — All regions',   tag: 'EXCELLENT',    tagOk: true  },
-  { label: 'Staff Turnover Rate',    value: '4.2%',       sub: 'Industry avg: 6.5%',        tag: 'LOW RISK',     tagOk: true  },
-  { label: 'Open Vacancies',         value: '38',         sub: '12 critical roles',          tag: 'ACTION NEEDED', tagOk: false },
-  { label: 'Grievances Filed (Q3)',  value: '7',          sub: '5 resolved, 2 pending',      tag: 'MONITORED',    tagOk: true  },
-];
-
-const RESOLUTIONS = [
-  { ref:'BOD-R-001', title:'Approval of FY 2024/25 HR Budget',        date:'Aug 12, 2024', status:'passed'  },
-  { ref:'BOD-R-002', title:'Ratification of New Grading Structure',    date:'Jul 28, 2024', status:'passed'  },
-  { ref:'BOD-R-003', title:'Executive Performance Bonus Framework',    date:'Sep 03, 2024', status:'deferred'},
-  { ref:'BOD-R-004', title:'Regional Recruitment Drive — East Africa', date:'Sep 03, 2024', status:'passed'  },
-];
-
-const MEETINGS = [
-  { date:'15 OCT', title:'Q3 Performance Review',       type:'Full Board Meeting',       venue:'Boardroom 1, Head Office' },
-  { date:'22 OCT', title:'HR Budget Reconciliation',    type:'Finance Sub-Committee',    venue:'Virtual — MS Teams'        },
-  { date:'05 NOV', title:'Annual Strategy Review',      type:'Strategy Committee',       venue:'Serena Hotel, Kampala'      },
-];
-
-const QUARTERS = ['Q1','Q2','Q3'];
-const BUDGET_B  = [88, 90, 87.5];
-const HEADCOUNT_B = [4680, 4750, 4821];
-const maxH = Math.max(...HEADCOUNT_B);
-
-const EXEC = [
-  { init:'RN', name:'Ruth Nankabirwa',  role:'Managing Director',      kpi:'9.1/10', variance:'+0.3' },
-  { init:'SM', name:'Samuel Mutebi',    role:'Dir. Finance & Strategy', kpi:'8.7/10', variance:'+0.1' },
-  { init:'JK', name:'Joyce Kyomugisha', role:'Dir. Human Resources',   kpi:'8.4/10', variance:'-0.2' },
-  { init:'PO', name:'Patrick Ochen',    role:'Dir. Operations',         kpi:'7.9/10', variance:'+0.5' },
-];
-
-const STATUS_STYLES = {
-  passed:   { bg:'#e6f4ea', color:'#28a745', label:'PASSED'   },
-  deferred: { bg:'#fff3cd', color:'#856404', label:'DEFERRED' },
-  pending:  { bg:'#fdecea', color:'#dc3545', label:'PENDING'  },
-};
-
 export default function BoardDashboard() {
+  const navigate = useNavigate();
+  const [headcount, setHeadcount] = useState(null);
+  const [recruitment, setRecruitment] = useState(null);
+  const [departments, setDepartments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [hc, rec, depts] = await Promise.all([
+          reportsService.getHeadcount(),
+          reportsService.getRecruitment(),
+          departmentsService.list(),
+        ]);
+        setHeadcount(hc);
+        setRecruitment(rec);
+        setDepartments(Array.isArray(depts) ? depts : depts.results || []);
+      } catch (err) {
+        setError('Failed to load governance data.');
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
+  const total = headcount?.total || 0;
+  const byContract = headcount?.by_contract || [];
+  const byGender = headcount?.by_gender || [];
+
+  const permanentStaff = byContract.find((c) => c.contract_type === 'permanent')?.count || 0;
+  const contractStaff = byContract.find((c) => c.contract_type === 'contract')?.count || 0;
+  const maleCount = byGender.find((g) => g.gender === 'M')?.count || 0;
+  const femaleCount = byGender.find((g) => g.gender === 'F')?.count || 0;
+
+  if (loading) {
+    return (
+      <DashboardLayout portalLabel="Board Secretariat" searchPlaceholder="Search resolutions, reports, metrics…">
+        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>Loading dashboard…</div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout portalLabel="Board Secretariat" searchPlaceholder="Search resolutions, reports, metrics…">
+        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-danger)' }}>{error}</div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout portalLabel="Board Secretariat" searchPlaceholder="Search resolutions, reports, metrics…">
-      {/* Header */}
       <div className={styles.header}>
         <div>
           <p className={styles.overline}>BOARD OF DIRECTORS — NWSC UGANDA</p>
-          <h1 className={styles.title}>Governance &amp; Performance Dashboard</h1>
-          <p className={styles.sub}>FY 2023/24 Q3 Executive Summary — Confidential</p>
+          <h1 className={styles.title}>Governance & Performance Dashboard</h1>
+          <p className={styles.sub}>Workforce Analytics Summary</p>
         </div>
         <div className={styles.headerBtns}>
-          <button className={styles.btnOutline}><FiDownload /> Board Pack</button>
-          <button className={styles.btnPrimary}><FiCalendar /> Q3 2024</button>
+          <button className={styles.btnOutline} onClick={() => navigate('/reports')}><FiDownload /> Board Pack</button>
+          <button className={styles.btnPrimary} onClick={() => navigate('/workforce')}><FiCalendar /> View Workforce</button>
         </div>
       </div>
 
-      {/* KPI grid — 3 × 2 */}
+      {/* KPI grid */}
       <div className={styles.kpiGrid}>
-        {KPI.map((k, i) => (
-          <div key={i} className={styles.kpiCard}>
-            <div className={styles.kpiVal}>{k.value}</div>
-            <div className={styles.kpiLabel}>{k.label}</div>
-            <div className={styles.kpiSub}>{k.sub}</div>
-            <span className={`${styles.kpiTag} ${k.tagOk ? styles.tagOk : styles.tagAlert}`}>{k.tag}</span>
-          </div>
-        ))}
+        <div className={styles.kpiCard}>
+          <div className={styles.kpiVal}>{total.toLocaleString()}</div>
+          <div className={styles.kpiLabel}>Total Workforce</div>
+          <div className={styles.kpiSub}>Active employees</div>
+          <span className={`${styles.kpiTag} ${styles.tagOk}`}>ACTIVE</span>
+        </div>
+        <div className={styles.kpiCard}>
+          <div className={styles.kpiVal}>{departments.length}</div>
+          <div className={styles.kpiLabel}>Departments</div>
+          <div className={styles.kpiSub}>Organisational units</div>
+          <span className={`${styles.kpiTag} ${styles.tagOk}`}>ACTIVE</span>
+        </div>
+        <div className={styles.kpiCard}>
+          <div className={styles.kpiVal}>{maleCount}</div>
+          <div className={styles.kpiLabel}>Male Staff</div>
+          <div className={styles.kpiSub}>{total > 0 ? Math.round((maleCount / total) * 100) : 0}% of workforce</div>
+          <span className={`${styles.kpiTag} ${styles.tagOk}`}>REPORTED</span>
+        </div>
+        <div className={styles.kpiCard}>
+          <div className={styles.kpiVal}>{femaleCount}</div>
+          <div className={styles.kpiLabel}>Female Staff</div>
+          <div className={styles.kpiSub}>{total > 0 ? Math.round((femaleCount / total) * 100) : 0}% of workforce</div>
+          <span className={`${styles.kpiTag} ${styles.tagOk}`}>REPORTED</span>
+        </div>
+        <div className={styles.kpiCard}>
+          <div className={styles.kpiVal}>{permanentStaff.toLocaleString()}</div>
+          <div className={styles.kpiLabel}>Permanent Staff</div>
+          <div className={styles.kpiSub}>Full-time employees</div>
+          <span className={`${styles.kpiTag} ${styles.tagOk}`}>PERMANENT</span>
+        </div>
+        <div className={styles.kpiCard}>
+          <div className={styles.kpiVal}>{contractStaff.toLocaleString()}</div>
+          <div className={styles.kpiLabel}>Contract Staff</div>
+          <div className={styles.kpiSub}>Fixed-term employees</div>
+          <span className={`${styles.kpiTag} ${styles.tagOk}`}>CONTRACT</span>
+        </div>
       </div>
 
       <div className={styles.threeCol}>
-        {/* Quarterly Trend — Budget vs Headcount */}
-        <div className={styles.card} style={{gridColumn:'span 2'}}>
+        {/* Department Distribution */}
+        <div className={styles.card} style={{ gridColumn: 'span 2' }}>
           <div className={styles.cardHeader}>
-            <span>Quarterly Performance Trend</span>
-            <FiMaximize2 size={14} style={{cursor:'pointer', color:'var(--color-text-muted)'}}/>
+            <span>Department Headcount</span>
           </div>
-          <div className={styles.trendGrid}>
-            {/* Budget utilisation */}
-            <div>
-              <div className={styles.trendTitle}>Budget Utilisation (%)</div>
-              <div className={styles.barRow}>
-                {QUARTERS.map((q, i) => (
-                  <div key={q} className={styles.barBlock}>
-                    <div className={styles.barWrap}>
-                      <div className={styles.barFill} style={{height:`${BUDGET_B[i]}px`, background:'#00244d'}}/>
-                      <div className={styles.barPctLabel}>{BUDGET_B[i]}%</div>
-                    </div>
-                    <div className={styles.barQLabel}>{q}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            {/* Headcount */}
-            <div>
-              <div className={styles.trendTitle}>Headcount</div>
-              <div className={styles.barRow}>
-                {QUARTERS.map((q, i) => (
-                  <div key={q} className={styles.barBlock}>
-                    <div className={styles.barWrap}>
-                      <div className={styles.barFill} style={{height:`${(HEADCOUNT_B[i]/maxH)*100}px`, background:'#005a9c'}}/>
-                      <div className={styles.barPctLabel}>{HEADCOUNT_B[i].toLocaleString()}</div>
-                    </div>
-                    <div className={styles.barQLabel}>{q}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Upcoming Meetings */}
-        <div className={styles.card}>
-          <div className={styles.cardHeader}><span>📅 Upcoming Meetings</span></div>
-          {MEETINGS.map((m, i) => (
-            <div key={i} className={styles.meetItem}>
-              <div className={styles.meetDate}><div className={styles.meetDay}>{m.date.split(' ')[0]}</div><div className={styles.meetMon}>{m.date.split(' ')[1]}</div></div>
-              <div>
-                <div className={styles.meetTitle}>{m.title}</div>
-                <div className={styles.meetType}>{m.type}</div>
-                <div className={styles.meetVenue}>📍 {m.venue}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className={styles.twoCol} style={{marginTop:'var(--space-md)'}}>
-        {/* Board Resolutions */}
-        <div className={styles.card}>
-          <div className={styles.cardHeader}>
-            <span>📋 Board Resolutions</span>
-            <button className={styles.linkBtn}>View Full Register →</button>
-          </div>
-          <table className={styles.table}>
-            <thead><tr><th>Reference</th><th>Resolution</th><th>Date</th><th>Status</th></tr></thead>
-            <tbody>
-              {RESOLUTIONS.map((r, i) => (
-                <tr key={i}>
-                  <td><code className={styles.refCode}>{r.ref}</code></td>
-                  <td className={styles.resTitle}>{r.title}</td>
-                  <td className={styles.resDate}>{r.date}</td>
-                  <td>
-                    <span className={styles.resBadge} style={{background: STATUS_STYLES[r.status].bg, color: STATUS_STYLES[r.status].color}}>
-                      {STATUS_STYLES[r.status].label}
-                    </span>
-                  </td>
+          {headcount?.by_dept && headcount.by_dept.length > 0 ? (
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Department</th>
+                  <th>Active Staff</th>
+                  <th>% of Workforce</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {headcount.by_dept.slice(0, 10).map((d) => (
+                  <tr key={d.name}>
+                    <td>{d.name}</td>
+                    <td>{d.active}</td>
+                    <td>{total > 0 ? Math.round((d.active / total) * 100) : 0}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>No department data available.</div>
+          )}
         </div>
 
-        {/* Executive Scorecards */}
+        {/* Contract & Gender Summary */}
         <div className={styles.card}>
-          <div className={styles.cardHeader}><span>👔 Executive Scorecards</span><span className={styles.sub2}>Q3 2024</span></div>
-          {EXEC.map((e, i) => (
-            <div key={i} className={styles.execRow}>
-              <div className={styles.execAva}>{e.init}</div>
-              <div className={styles.execInfo}>
-                <div className={styles.execName}>{e.name}</div>
-                <div className={styles.execRole}>{e.role}</div>
+          <div className={styles.cardHeader}><span>Workforce Composition</span></div>
+          <div style={{ marginBottom: '1rem' }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Contract Type</div>
+            {byContract.length > 0 ? byContract.map((c) => (
+              <div key={c.contract_type} className={styles.meetItem} style={{ marginBottom: '0.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                  <span>{c.contract_type || 'Unknown'}</span>
+                  <strong>{c.count}</strong>
+                </div>
               </div>
-              <div className={styles.execScore}>
-                <div className={styles.scoreVal}>{e.kpi}</div>
-                <div className={`${styles.scoreVar} ${parseFloat(e.variance) >= 0 ? styles.up : styles.down}`}>{e.variance}</div>
+            )) : <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>No data</div>}
+          </div>
+          <div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Gender</div>
+            {byGender.length > 0 ? byGender.map((g) => (
+              <div key={g.gender} className={styles.meetItem} style={{ marginBottom: '0.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                  <span>{g.gender === 'M' ? 'Male' : g.gender === 'F' ? 'Female' : 'Other'}</span>
+                  <strong>{g.count}</strong>
+                </div>
               </div>
-            </div>
-          ))}
-
-          {/* Governance health footer */}
-          <div className={styles.govHealth}>
-            <div className={styles.govLabel}>GOVERNANCE HEALTH INDEX</div>
-            <div className={styles.govBar}><div className={styles.govFill} style={{width:'91%'}}/></div>
-            <div className={styles.govFooter}><span>91% — Strong</span><span>Last audit: Sep 2024</span></div>
+            )) : <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>No data</div>}
           </div>
         </div>
       </div>
+
+      {/* Recruitment Summary */}
+      {recruitment && (
+        <div className={styles.card} style={{ marginTop: 'var(--space-md)' }}>
+          <div className={styles.cardHeader}><span>📋 Recruitment Overview</span></div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
+            <div style={{ background: '#f8f9fa', padding: '1rem', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
+              <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#005a9c' }}>{recruitment.total_jobs || 0}</div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>Total Jobs</div>
+            </div>
+            <div style={{ background: '#f8f9fa', padding: '1rem', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
+              <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#28a745' }}>{recruitment.open_jobs || 0}</div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>Open Jobs</div>
+            </div>
+            <div style={{ background: '#f8f9fa', padding: '1rem', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
+              <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#856404' }}>{recruitment.total_applications || 0}</div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>Applications</div>
+            </div>
+            <div style={{ background: '#f8f9fa', padding: '1rem', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
+              <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#28a745' }}>{recruitment.hired || 0}</div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>Hired</div>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }

@@ -6,6 +6,7 @@ import FormModal from '../../components/common/FormModal';
 import StatusBadge from '../../components/common/StatusBadge';
 import EmployeePicker from '../../components/common/EmployeePicker';
 import { useApiResource } from '../../hooks/useApiResource';
+import { useSearch } from '../../hooks/useSearch';
 import { useAuth } from '../../context/AuthContext';
 import { transfersService } from '../../services/transfersService';
 import { employeesService, departmentsService, positionsService } from '../../services/employeesService';
@@ -110,6 +111,7 @@ export default function TransferList() {
   const canApprove = IS_HR_OR_ADMIN.includes(user?.role);
 
   const { data, loading, error, refetch } = useApiResource(transfersService);
+  const filtered = useSearch(data, ['employee_id', 'employee_name', 'transfer_type', 'from_dept_name', 'to_dept_name', 'status']);
   const employeesRes = useApiResource(employeesService);
   const departmentsRes = useApiResource(departmentsService);
   const positionsRes = useApiResource(positionsService);
@@ -162,7 +164,7 @@ export default function TransferList() {
         {error && <div className={styles.errorBanner}>{error}</div>}
         <DataTable
           columns={columns}
-          rows={data}
+          rows={filtered}
           loading={loading}
           actions={(row) => (
             <>

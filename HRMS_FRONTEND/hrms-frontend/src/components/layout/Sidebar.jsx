@@ -37,7 +37,7 @@ function Sidebar() {
     <aside className={styles.sidebar}>
       {/* Brand */}
       <div className={styles.brand} onClick={() => navigate(dashboardPath)} style={{ cursor: 'pointer' }}>
-        <div className={styles.brandIcon}>N</div>
+        <img src="/logo.png" alt="NWSC" className={styles.brandLogo} />
         <div className={styles.brandText}>
           <div className={styles.brandName}>NWSC HRMS</div>
           <div className={styles.brandSub}>Reliable Governance</div>
@@ -63,13 +63,13 @@ function Sidebar() {
       </nav>
 
       {/* New Request */}
-      <button className={styles.newRequestBtn} onClick={() => {}}>
+      <button className={styles.newRequestBtn} onClick={() => navigate('/leave?action=new')}>
         <FiPlus /> New Request
       </button>
 
       {/* Bottom links */}
       <div className={styles.bottom}>
-        <a href="/help" className={styles.bottomLink}>
+        <a href="mailto:support@nwsc.co.ug" className={styles.bottomLink}>
           <FiHelpCircle /> Help Center
         </a>
         <button className={styles.bottomLink} onClick={handleLogout}>

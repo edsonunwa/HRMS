@@ -76,7 +76,7 @@ class Employee(models.Model):
     # Personal
     gender          = models.CharField(max_length=1, choices=GENDER_CHOICES)
     date_of_birth   = models.DateField(null=True, blank=True)
-    national_id     = models.CharField(max_length=30, unique=True, blank=True)
+    national_id     = models.CharField(max_length=30, unique=True, blank=True, null=True, default=None)
     tin_number      = models.CharField(max_length=20, blank=True)
     nssf_number     = models.CharField(max_length=20, blank=True)
     nationality     = models.CharField(max_length=50, default='Ugandan')

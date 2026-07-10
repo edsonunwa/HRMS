@@ -21,18 +21,14 @@
   border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 
-.brandIcon {
-  width: 32px;
-  height: 32px;
-  background: var(--color-primary);
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: var(--font-weight-bold);
-  color: var(--color-white);
-  font-size: 0.85rem;
+.brandLogo {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
   flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  background: #fff;
+  padding: 3px;
 }
 
 .brandText { line-height: 1.2; }

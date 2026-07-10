@@ -1,43 +1,18 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FiUser, FiLock, FiShield, FiEye, FiEyeOff, FiChevronDown, FiArrowRight, FiZap } from 'react-icons/fi';
+import { FiUser, FiLock, FiEye, FiEyeOff, FiArrowRight } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/authService';
-import { ROLES } from '../../utils/constants';
 import styles from './Login.module.css';
 
-const DEMO_USERS = [
-  { role: ROLES.ADMIN,            username: 'admin',       first_name: 'Dativah .',    last_name: '',         role_display: 'System Administrator'   },
-  { role: ROLES.HR_DIRECTOR,      username: 'hr_director', first_name: 'Director',    last_name: 'HR',       role_display: 'HR Director'             },
-  { role: ROLES.HR_OFFICER,       username: 'hr_officer',  first_name: 'Moriison',       last_name: 'Senior dev', role_display: 'Senior HR Officer'       },
-  { role: ROLES.DEPARTMENT_HEAD,  username: 'dept_head',   first_name: 'Mark',      last_name: 'BPO', role_display: 'Regional Operations Mgr' },
-  { role: ROLES.SENIOR_MANAGEMENT,username: 'senior_mgmt', first_name: 'uncle bob',        last_name: 'kachere',role_display: 'Managing Director'      },
-  { role: ROLES.BOARD,            username: 'board',       first_name: 'Board',       last_name: 'Member',   role_display: 'Board of Directors'      },
-  { role: ROLES.EMPLOYEE,         username: 'employee',    first_name: 'Alex',        last_name: 'Mwanje',   role_display: 'Principal Engineer'      },
-  
-];
-
-const ROLE_OPTIONS = [
-  { value: ROLES.HR_OFFICER,       label: 'HR Officer' },
-  { value: ROLES.HR_DIRECTOR,      label: 'HR Director' },
-  { value: ROLES.DEPARTMENT_HEAD,  label: 'Department Head' },
-  { value: ROLES.SENIOR_MANAGEMENT,label: 'Senior Management' },
-  { value: ROLES.BOARD,            label: 'Board of Directors' },
-  { value: ROLES.EMPLOYEE,         label: 'Employee' },
-  
-  { value: ROLES.ADMIN,            label: 'System Administrator' },
-];
-
 function Login() {
-  const { login, demoLogin, loading, error } = useAuth();
+  const { login, loading, error } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname;
 
-  const [form, setForm] = useState({ username: '', password: '', role: '' });
+  const [form, setForm] = useState({ username: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
-  const [imgError, setImgError] = useState(false);
-  const [showDemo, setShowDemo] = useState(false);
 
   function handleChange(e) {
     setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
@@ -58,25 +33,15 @@ function Login() {
     }
   }
 
-  function handleDemo(mockUser) {
-    const path = demoLogin(mockUser);
-    navigate(path, { replace: true });
-  }
-
   return (
     <div className={styles.page}>
       <div className={styles.card}>
         {/* Logo */}
-        {!imgError ? (
-          <img
-            src="/nwsc-logo.png"
+        <img
+            src="/logo.png"
             alt="NWSC Logo"
             className={styles.logo}
-            onError={() => setImgError(true)}
           />
-        ) : (
-          <div className={styles.logoFallback}><img src="/logo.png" alt="Company Logo" className="h-16 w-auto mx-auto" /></div>
-        )}
 
         <h1 className={styles.title}>NATIONAL WATER AND SEWERAGE CORPORATION</h1>
         <p className={styles.subtitle}>Human Resource Management System</p>
@@ -136,34 +101,9 @@ function Login() {
             </div>
           </div>
 
-          {/* User Role */}
-          <div className={styles.fieldGroup}>
-            <div className={styles.fieldHeader}>
-              <label htmlFor="role" className={styles.label}>User Role</label>
-              <span className={styles.required}>Required</span>
-            </div>
-            <div className={styles.inputWrap}>
-              <FiShield className={styles.inputIcon} />
-              <select
-                id="role"
-                name="role"
-                required
-                value={form.role}
-                onChange={handleChange}
-                className={styles.select}
-              >
-                <option value="" disabled>Select your role</option>
-                {ROLE_OPTIONS.map((r) => (
-                  <option key={r.value} value={r.value}>{r.label}</option>
-                ))}
-              </select>
-              <FiChevronDown className={styles.chevron} />
-            </div>
-          </div>
-
           <button
             type="submit"
-            disabled={loading || !form.username || !form.password || !form.role}
+            disabled={loading || !form.username || !form.password}
             className={styles.submitBtn}
           >
             {loading ? 'Signing in…' : 'Login'} <FiArrowRight />

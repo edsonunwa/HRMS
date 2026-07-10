@@ -143,33 +143,6 @@
 
 .eyeBtn:hover { color: var(--color-primary); }
 
-.select {
-  width: 100%;
-  padding: 0.65rem 0.75rem 0.65rem 2.25rem;
-  border: 1.5px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-base);
-  color: var(--color-text);
-  background: #fafafa;
-  outline: none;
-  appearance: none;
-  cursor: pointer;
-  transition: border-color var(--transition-fast);
-}
-
-.select:focus {
-  border-color: var(--color-primary);
-  background: var(--color-white);
-  box-shadow: 0 0 0 3px rgba(0,90,156,0.1);
-}
-
-.chevron {
-  position: absolute;
-  right: 0.75rem;
-  pointer-events: none;
-  color: var(--color-text-muted);
-}
-
 .submitBtn {
   width: 100%;
   padding: 0.8rem;

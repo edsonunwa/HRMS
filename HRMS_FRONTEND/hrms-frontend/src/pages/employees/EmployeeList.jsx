@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { FiPlus, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import DataTable from '../../components/common/DataTable';
 import FormModal from '../../components/common/FormModal';
 import StatusBadge from '../../components/common/StatusBadge';
 import EmployeePicker from '../../components/common/EmployeePicker';
 import { useApiResource } from '../../hooks/useApiResource';
+import { useSearch } from '../../hooks/useSearch';
 import { useAuth } from '../../context/AuthContext';
 import { employeesService, departmentsService, gradesService, positionsService } from '../../services/employeesService';
 import { userService } from '../../services/userService';
@@ -45,8 +47,10 @@ function GenericFormFields({ fields, form, setField }) {
   );
 }
 
-function SimpleResourceTab({ service, fields, columns, canWrite }) {
+function SimpleResourceTab({ service, fields, columns, searchKeys, canWrite }) {
+
   const { data, loading, error, refetch } = useApiResource(service);
+  const filtered = useSearch(data, searchKeys || []);
   const [modalMode, setModalMode] = useState(null); // 'create' | editingRow | null
   const [formError, setFormError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -107,7 +111,7 @@ function SimpleResourceTab({ service, fields, columns, canWrite }) {
       )}
       <DataTable
         columns={columns}
-        rows={data}
+        rows={filtered}
         loading={loading}
         actions={canWrite ? (row) => (
           <>
@@ -144,12 +148,23 @@ function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, pos
     user: '', employee_id: '', department: '', position: '', grade: '', supervisor: '',
     gender: 'M', date_of_birth: '', national_id: '', join_date: '',
     employment_status: 'active', contract_type: 'permanent', basic_salary: '',
+    confirmation_date: '', termination_date: '',
+    tin_number: '', nssf_number: '', nationality: 'Ugandan',
+    address: '', next_of_kin: '', next_of_kin_contact: '',
   });
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const filteredPositions = positions.filter(
+    (p) => !form.department || String(p.department?.id ?? p.department) === String(form.department)
+  );
+
   function setField(key, value) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  function handleDepartmentChange(e) {
+    setForm((f) => ({ ...f, department: e.target.value, position: '' }));
   }
 
   async function handleSubmit(e) {
@@ -165,10 +180,19 @@ function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, pos
         grade_id: form.grade || undefined,
         join_date: form.join_date,
         date_of_birth: form.date_of_birth || undefined,
+        confirmation_date: form.confirmation_date || undefined,
+        termination_date: form.termination_date || undefined,
         employment_status: form.employment_status,
         contract_type: form.contract_type,
         basic_salary: form.basic_salary || undefined,
         supervisor: form.supervisor || null,
+        national_id: form.national_id || undefined,
+        tin_number: form.tin_number,
+        nssf_number: form.nssf_number,
+        nationality: form.nationality,
+        address: form.address,
+        next_of_kin: form.next_of_kin,
+        next_of_kin_contact: form.next_of_kin_contact,
       };
       if (!editing) payload.user_id = form.user;
       if (editing) {
@@ -216,7 +240,7 @@ function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, pos
       <div className={styles.row2}>
         <div className={styles.field}>
           <label>Department</label>
-          <select value={form.department} onChange={(e) => setField('department', e.target.value)} required>
+          <select value={form.department} onChange={handleDepartmentChange} required>
             <option value="">—</option>
             {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
@@ -225,7 +249,7 @@ function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, pos
           <label>Position</label>
           <select value={form.position} onChange={(e) => setField('position', e.target.value)} required>
             <option value="">—</option>
-            {positions.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
+            {filteredPositions.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
           </select>
         </div>
       </div>
@@ -270,12 +294,59 @@ function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, pos
         <label>Basic Salary</label>
         <input type="number" step="0.01" value={form.basic_salary} onChange={(e) => setField('basic_salary', e.target.value)} />
       </div>
+      <div className={styles.row2}>
+        <div className={styles.field}>
+          <label>Confirmation Date</label>
+          <input type="date" value={form.confirmation_date} onChange={(e) => setField('confirmation_date', e.target.value)} />
+        </div>
+        <div className={styles.field}>
+          <label>Termination Date</label>
+          <input type="date" value={form.termination_date} onChange={(e) => setField('termination_date', e.target.value)} />
+        </div>
+      </div>
+
+      <div className={styles.row2}>
+        <div className={styles.field}>
+          <label>National ID</label>
+          <input value={form.national_id} onChange={(e) => setField('national_id', e.target.value)} />
+        </div>
+        <div className={styles.field}>
+          <label>Nationality</label>
+          <input value={form.nationality} onChange={(e) => setField('nationality', e.target.value)} />
+        </div>
+      </div>
+      <div className={styles.row2}>
+        <div className={styles.field}>
+          <label>TIN Number</label>
+          <input value={form.tin_number} onChange={(e) => setField('tin_number', e.target.value)} />
+        </div>
+        <div className={styles.field}>
+          <label>NSSF Number</label>
+          <input value={form.nssf_number} onChange={(e) => setField('nssf_number', e.target.value)} />
+        </div>
+      </div>
+      <div className={styles.field}>
+        <label>Address</label>
+        <textarea rows={2} value={form.address} onChange={(e) => setField('address', e.target.value)} />
+      </div>
+      <div className={styles.row2}>
+        <div className={styles.field}>
+          <label>Next of Kin</label>
+          <input value={form.next_of_kin} onChange={(e) => setField('next_of_kin', e.target.value)} />
+        </div>
+        <div className={styles.field}>
+          <label>Next of Kin Contact</label>
+          <input value={form.next_of_kin_contact} onChange={(e) => setField('next_of_kin_contact', e.target.value)} />
+        </div>
+      </div>
     </FormModal>
   );
 }
 
 function EmployeesTab({ canWrite }) {
+  const navigate = useNavigate();
   const { data, loading, error, refetch } = useApiResource(employeesService);
+  const filtered = useSearch(data, ['employee_id', 'full_name', 'department_name', 'position_title', 'employment_status', 'contract_type']);
   const departmentsRes = useApiResource(departmentsService);
   const gradesRes = useApiResource(gradesService);
   const positionsRes = useApiResource(positionsService);
@@ -286,7 +357,7 @@ function EmployeesTab({ canWrite }) {
 
   React.useEffect(() => {
     if (modalOpen && !editing) {
-      userService.list().then(setUsers).catch(() => setUsers([]));
+      userService.listWithoutProfile().then(setUsers).catch(() => setUsers([]));
     }
   }, [modalOpen, editing]);
 
@@ -323,7 +394,9 @@ function EmployeesTab({ canWrite }) {
 
   const columns = [
     { key: 'employee_id', label: 'ID' },
-    { key: 'full_name', label: 'Name' },
+    { key: 'full_name', label: 'Name', render: (r) => (
+      <span className={styles.employeeName}>{r.full_name}</span>
+    ) },
     { key: 'department_name', label: 'Department' },
     { key: 'position_title', label: 'Position' },
     { key: 'employment_status', label: 'Status', render: (r) => <StatusBadge status={r.employment_status} /> },
@@ -340,8 +413,9 @@ function EmployeesTab({ canWrite }) {
       )}
       <DataTable
         columns={columns}
-        rows={data}
+        rows={filtered}
         loading={loading}
+        onRowClick={(row) => navigate(`/workforce/${row.id}`)}
         actions={canWrite ? (row) => (
           <>
             <button className={styles.iconBtn} onClick={() => openEdit(row)} disabled={loadingEdit}><FiEdit2 /></button>
@@ -377,6 +451,273 @@ const ALL_TABS = [
   { key: 'positions', label: 'Positions', canRead: (role) => IS_HR_OR_ADMIN.includes(role) },
 ];
 
+function DepartmentsTab({ canWrite }) {
+  const { data, loading, error, refetch } = useApiResource(departmentsService);
+  const filtered = useSearch(data, ['name', 'code', 'region']);
+  const [modalMode, setModalMode] = useState(null);
+  const [formError, setFormError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [deptHeadUsers, setDeptHeadUsers] = useState([]);
+
+  const editing = modalMode && modalMode !== 'create' ? modalMode : null;
+  const isOpen = modalMode !== null;
+  const [form, setForm] = useState({ name: '', code: '', region: '', description: '', head: '' });
+
+  React.useEffect(() => {
+    userService.list().then((users) => {
+      setDeptHeadUsers(users.filter((u) => u.role === 'department_head'));
+    }).catch(() => {});
+  }, []);
+
+  function setField(key, value) { setForm((f) => ({ ...f, [key]: value })); }
+
+  function openCreate() {
+    setFormError(null);
+    setForm({ name: '', code: '', region: '', description: '', head: '' });
+    setModalMode('create');
+  }
+  function openEdit(row) {
+    setFormError(null);
+    setForm({
+      name: row.name || '',
+      code: row.code || '',
+      region: row.region || '',
+      description: row.description || '',
+      head: row.head ?? '',
+    });
+    setModalMode(row);
+  }
+  function close() { setModalMode(null); }
+
+  async function handleDelete(row) {
+    if (!window.confirm('Delete this department?')) return;
+    await departmentsService.remove(row.id);
+    refetch();
+  }
+
+  async function handleFormSubmit(e) {
+    e.preventDefault();
+    setSubmitting(true);
+    setFormError(null);
+    try {
+      const payload = {
+        name: form.name,
+        code: form.code,
+        region: form.region,
+        description: form.description,
+        head: form.head || null,
+      };
+      if (editing) await departmentsService.update(editing.id, payload);
+      else await departmentsService.create(payload);
+      close();
+      refetch();
+    } catch (err) {
+      setFormError(err.response?.data ? JSON.stringify(err.response.data) : 'Save failed.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const columns = [
+    { key: 'name', label: 'Name' },
+    { key: 'code', label: 'Code' },
+    { key: 'region', label: 'Region' },
+    { key: 'head', label: 'Head', render: (r) => {
+      if (!r.head) return <span style={{ color: 'var(--color-text-muted)' }}>Not assigned</span>;
+      const u = deptHeadUsers.find((u) => u.id === r.head);
+      return u ? `${u.first_name} ${u.last_name}`.trim() || u.username : `User #${r.head}`;
+    }},
+  ];
+
+  return (
+    <div className={styles.card}>
+      {error && <div className={styles.errorBanner}>{error}</div>}
+      {canWrite && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--space-md)' }}>
+          <button className={styles.btnPrimary} onClick={openCreate}><FiPlus /> Add</button>
+        </div>
+      )}
+      <DataTable
+        columns={columns}
+        rows={filtered}
+        loading={loading}
+        actions={canWrite ? (row) => (
+          <>
+            <button className={styles.iconBtn} onClick={() => openEdit(row)}><FiEdit2 /></button>
+            <button className={`${styles.iconBtn} ${styles.dangerBtn}`} onClick={() => handleDelete(row)}><FiTrash2 /></button>
+          </>
+        ) : undefined}
+      />
+      {isOpen && (
+        <FormModal
+          title={editing ? 'Edit Department' : 'Add Department'}
+          onClose={close}
+          onSubmit={handleFormSubmit}
+          submitting={submitting}
+          error={formError}
+        >
+          <div className={styles.row2}>
+            <div className={styles.field}>
+              <label>Name</label>
+              <input value={form.name} onChange={(e) => setField('name', e.target.value)} required />
+            </div>
+            <div className={styles.field}>
+              <label>Code</label>
+              <input value={form.code} onChange={(e) => setField('code', e.target.value)} required />
+            </div>
+          </div>
+          <div className={styles.row2}>
+            <div className={styles.field}>
+              <label>Region</label>
+              <input value={form.region} onChange={(e) => setField('region', e.target.value)} />
+            </div>
+            <div className={styles.field}>
+              <label>Department Head</label>
+              <select value={form.head} onChange={(e) => setField('head', e.target.value)}>
+                <option value="">— Not assigned —</option>
+                {deptHeadUsers.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {`${u.first_name} ${u.last_name}`.trim() || u.username} ({u.username})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className={styles.field}>
+            <label>Description</label>
+            <input value={form.description} onChange={(e) => setField('description', e.target.value)} />
+          </div>
+        </FormModal>
+      )}
+    </div>
+  );
+}
+
+function PositionsTab({ canWrite }) {
+  const { data: departmentsData, loading: departmentsLoading, error: departmentsError } = useApiResource(departmentsService);
+  const departments = departmentsData || [];
+
+
+  const { data, loading, error, refetch } = useApiResource(positionsService);
+  const filtered = useSearch(data, ['title', 'department.name', 'grade.title']);
+  const [modalMode, setModalMode] = useState(null);
+  const [formError, setFormError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const editing = modalMode && modalMode !== 'create' ? modalMode : null;
+  const isOpen = modalMode !== null;
+  const [form, setForm] = useState({ title: '', description: '', department: '' });
+
+  function setField(key, value) {
+    setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  function openCreate() {
+    setFormError(null);
+    setForm({ title: '', description: '', department: '' });
+    setModalMode('create');
+  }
+  function openEdit(row) {
+    setFormError(null);
+    setForm({
+      title: row.title || '',
+      description: row.description || '',
+      department: row.department?.id ?? row.department ?? '',
+    });
+    setModalMode(row);
+  }
+  function close() {
+    setModalMode(null);
+  }
+
+  async function handleDelete(row) {
+    if (!window.confirm('Delete this record?')) return;
+    await positionsService.remove(row.id);
+    refetch();
+  }
+
+  async function handleFormSubmit(e) {
+    e.preventDefault();
+    setSubmitting(true);
+    setFormError(null);
+    try {
+      const payload = {
+        title: form.title,
+        description: form.description || '',
+        department: form.department,
+      };
+      if (editing) {
+        await positionsService.update(editing.id, payload);
+      } else {
+        await positionsService.create(payload);
+      }
+      close();
+      refetch();
+    } catch (err) {
+      setFormError(err.response?.data ? JSON.stringify(err.response.data) : 'Save failed.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const columns = [
+    { key: 'title', label: 'Title' },
+    { key: 'department', label: 'Department', render: (r) => r.department?.name || r.department },
+    { key: 'grade', label: 'Grade', render: (r) => r.grade?.title || r.grade },
+    { key: 'is_active', label: 'Active', render: (r) => (r.is_active ? 'Yes' : 'No') },
+  ];
+
+  return (
+    <div className={styles.card}>
+      {(error || departmentsError) && <div className={styles.errorBanner}>{JSON.stringify(error?.detail || departmentsError?.detail || error || departmentsError)}</div>}
+      {canWrite && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--space-md)' }}>
+          <button className={styles.btnPrimary} onClick={openCreate}><FiPlus /> Add</button>
+        </div>
+      )}
+
+      <DataTable
+        columns={columns}
+        rows={filtered}
+        loading={loading || departmentsLoading}
+        actions={canWrite ? (row) => (
+          <>
+            <button className={styles.iconBtn} onClick={() => openEdit(row)}><FiEdit2 /></button>
+            <button className={`${styles.iconBtn} ${styles.dangerBtn}`} onClick={() => handleDelete(row)}><FiTrash2 /></button>
+          </>
+        ) : undefined}
+      />
+
+      {isOpen && (
+        <FormModal
+          title={editing ? 'Edit Record' : 'Add Record'}
+          onClose={close}
+          onSubmit={handleFormSubmit}
+          submitting={submitting}
+          error={formError}
+        >
+          <div className={styles.field}>
+            <label>Title</label>
+            <input value={form.title} onChange={(e) => setField('title', e.target.value)} required />
+          </div>
+          <div className={styles.row2}>
+            <div className={styles.field}>
+              <label>Department</label>
+              <select value={form.department} onChange={(e) => setField('department', e.target.value)} required>
+                <option value="">—</option>
+                {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+            </div>
+            <div className={styles.field}>
+              <label>Description</label>
+              <input value={form.description} onChange={(e) => setField('description', e.target.value)} />
+            </div>
+          </div>
+        </FormModal>
+      )}
+    </div>
+  );
+}
+
 export default function EmployeeList() {
   const { user } = useAuth();
   const visibleTabs = ALL_TABS.filter((t) => t.canRead(user?.role));
@@ -407,26 +748,13 @@ export default function EmployeeList() {
 
       {tab === 'employees' && <EmployeesTab canWrite={canWriteEmployees} />}
       {tab === 'departments' && (
-        <SimpleResourceTab
-          service={departmentsService}
-          canWrite={canWriteLookups}
-          columns={[
-            { key: 'name', label: 'Name' },
-            { key: 'code', label: 'Code' },
-            { key: 'region', label: 'Region' },
-          ]}
-          fields={[
-            { key: 'name', label: 'Name', required: true },
-            { key: 'code', label: 'Code', required: true },
-            { key: 'region', label: 'Region' },
-            { key: 'description', label: 'Description' },
-          ]}
-        />
+        <DepartmentsTab canWrite={canWriteLookups} />
       )}
       {tab === 'grades' && (
         <SimpleResourceTab
           service={gradesService}
           canWrite={canWriteLookups}
+          searchKeys={['title', 'level']}
           columns={[
             { key: 'title', label: 'Title' },
             { key: 'level', label: 'Level' },
@@ -443,20 +771,7 @@ export default function EmployeeList() {
         />
       )}
       {tab === 'positions' && (
-        <SimpleResourceTab
-          service={positionsService}
-          canWrite={canWriteLookups}
-          columns={[
-            { key: 'title', label: 'Title' },
-            { key: 'department', label: 'Department', render: (r) => r.department?.name || r.department },
-            { key: 'grade', label: 'Grade', render: (r) => r.grade?.title || r.grade },
-            { key: 'is_active', label: 'Active', render: (r) => (r.is_active ? 'Yes' : 'No') },
-          ]}
-          fields={[
-            { key: 'title', label: 'Title', required: true },
-            { key: 'description', label: 'Description' },
-          ]}
-        />
+        <PositionsTab canWrite={canWriteLookups} />
       )}
     </DashboardLayout>
   );

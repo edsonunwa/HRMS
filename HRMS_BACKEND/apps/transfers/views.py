@@ -21,9 +21,15 @@ class TransferListCreateView(generics.ListCreateAPIView):
         if user.role in ("hr_officer","hr_director","admin","senior_management","board"):
             return Transfer.objects.select_related("employee","from_department","to_department").all()
         if user.role == "department_head":
-            dept = user.employee_profile.department
+            profile = user.get_employee_profile()
+            if profile is None:
+                return Transfer.objects.none()
+            dept = profile.department
             return Transfer.objects.filter(from_department=dept) | Transfer.objects.filter(to_department=dept)
-        return Transfer.objects.filter(employee=user.employee_profile)
+        profile = user.get_employee_profile()
+        if profile is None:
+            return Transfer.objects.none()
+        return Transfer.objects.filter(employee=profile)
 
 
 class TransferDetailView(generics.RetrieveUpdateDestroyAPIView):

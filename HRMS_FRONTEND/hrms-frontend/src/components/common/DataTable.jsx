@@ -34,7 +34,9 @@ function DataTable({ columns, rows, loading, onRowClick, actions, emptyMessage }
             ))}
             {actions && (
               <td className={styles.actionsCell} onClick={(e) => e.stopPropagation()}>
-                {actions(row)}
+                <div className={styles.actionsCellInner}>
+                  {actions(row)}
+                </div>
               </td>
             )}
           </tr>

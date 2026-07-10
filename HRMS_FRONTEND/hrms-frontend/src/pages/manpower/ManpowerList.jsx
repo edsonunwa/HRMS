@@ -5,6 +5,7 @@ import DataTable from '../../components/common/DataTable';
 import FormModal from '../../components/common/FormModal';
 import StatusBadge from '../../components/common/StatusBadge';
 import { useApiResource } from '../../hooks/useApiResource';
+import { useSearch } from '../../hooks/useSearch';
 import { useAuth } from '../../context/AuthContext';
 import { manpowerPlansService, establishmentPostsService } from '../../services/manpowerService';
 import { departmentsService, positionsService, gradesService } from '../../services/employeesService';
@@ -95,6 +96,7 @@ function PlanFormModal({ editing, departments, onClose, onSaved }) {
 
 function PlansTab({ canWrite, canApprove }) {
   const { data, loading, error, refetch } = useApiResource(manpowerPlansService);
+  const filtered = useSearch(data, ['title', 'department_name', 'financial_year', 'status']);
   const departmentsRes = useApiResource(departmentsService);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -139,7 +141,7 @@ function PlansTab({ canWrite, canApprove }) {
       )}
       <DataTable
         columns={columns}
-        rows={data}
+        rows={filtered}
         loading={loading}
         actions={(row) => (
           <>
@@ -266,6 +268,7 @@ function PostFormModal({ editing, plans, positions, grades, onClose, onSaved }) 
 
 function PostsTab({ canCreate, canEdit }) {
   const { data, loading, error, refetch } = useApiResource(establishmentPostsService);
+  const filtered = useSearch(data, ['position_title', 'grade_level', 'status']);
   const plansRes = useApiResource(manpowerPlansService);
   const positionsRes = useApiResource(positionsService);
   const gradesRes = useApiResource(gradesService);
@@ -300,7 +303,7 @@ function PostsTab({ canCreate, canEdit }) {
       )}
       <DataTable
         columns={columns}
-        rows={data}
+        rows={filtered}
         loading={loading}
         actions={canEdit ? (row) => (
           <>
