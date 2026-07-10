@@ -8,7 +8,7 @@ class DepartmentAdmin(admin.ModelAdmin):
 
 @admin.register(Grade)
 class GradeAdmin(admin.ModelAdmin):
-    list_display = ['level', 'min_salary', 'max_salary']
+    list_display = ['level', 'title', 'min_salary', 'max_salary']
 
 @admin.register(Position)
 class PositionAdmin(admin.ModelAdmin):
@@ -21,4 +21,4 @@ class EmployeeAdmin(admin.ModelAdmin):
     list_display  = ['employee_id', 'full_name', 'department', 'position', 'employment_status']
     list_filter   = ['employment_status', 'contract_type', 'department', 'gender']
     search_fields = ['employee_id', 'user__first_name', 'user__last_name']
-    autocomplete_fields = ['user']
+    raw_id_fields = ['user', 'supervisor']
