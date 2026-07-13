@@ -309,8 +309,8 @@ class CancelLeaveView(APIView):
     """
     POST /api/leave/requests/<pk>/cancel/
 
-    - Employee (owner): can recall an approved request only if leave hasn't started yet.
-    - HR/Admin: can cancel any pending request, or recall any approved request.
+    - Employee (owner): can cancel their own pending request.
+    - HR Director / HR Officer / Admin: can cancel any pending request, or recall any approved request.
     """
     permission_classes = [IsAuthenticated]
 
@@ -323,16 +323,8 @@ class CancelLeaveView(APIView):
         is_owner = leave.employee.user == request.user
         is_hr    = request.user.role in (ROLES.HR_OFFICER, ROLES.HR_DIRECTOR, ROLES.ADMIN)
 
-        if not (is_owner or is_hr):
-            return Response(
-                {'detail': 'You do not have permission to perform this action.'},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        from django.utils import timezone
-        today = timezone.now().date()
-
         if leave.status == 'pending':
+            # For pending requests: owner or HR can cancel
             if not (is_owner or is_hr):
                 return Response(
                     {'detail': 'You do not have permission to cancel this request.'},
@@ -343,10 +335,11 @@ class CancelLeaveView(APIView):
             return Response({'detail': 'Leave request cancelled.'})
 
         if leave.status == 'approved':
-            if not is_hr and leave.start_date <= today:
+            # For approved requests: ONLY HR Director, HR Officer, or Admin can recall
+            if not is_hr:
                 return Response(
-                    {'detail': 'Leave has already started and cannot be recalled. Contact HR.'},
-                    status=status.HTTP_400_BAD_REQUEST,
+                    {'detail': 'Only HR Director or HR Officer can recall an approved leave request.'},
+                    status=status.HTTP_403_FORBIDDEN,
                 )
             LeaveBalance.objects.filter(
                 employee=leave.employee,

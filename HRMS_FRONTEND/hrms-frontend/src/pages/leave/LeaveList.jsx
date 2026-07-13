@@ -9,7 +9,7 @@ import { useApiResource } from '../../hooks/useApiResource';
 import { useSearch } from '../../hooks/useSearch';
 import { useAuth } from '../../context/AuthContext';
 import { leaveTypesService, leaveBalancesService, leaveRequestsService } from '../../services/leaveService';
-import { IS_HR_OR_ADMIN, IS_DEPARTMENT_HEAD_OR_ABOVE, ROLES } from '../../utils/constants';
+import { IS_HR_OR_ADMIN, ROLES } from '../../utils/constants';
 import styles from './LeaveList.module.css';
 
 /* ---------- Leave Types tab ---------- */
@@ -303,7 +303,7 @@ function RequestsTab({ canApprove }) {
           const isOwner = row.employee_user_id === user?.id;
           const isHR = [ROLES.HR_OFFICER, ROLES.HR_DIRECTOR, ROLES.ADMIN].includes(user?.role);
           const canCancel = row.status === 'pending' && (isOwner || isHR);
-          const canRecall = row.status === 'approved' && (isHR || (isOwner && row.start_date > TODAY));
+          const canRecall = row.status === 'approved' && isHR; // Only HR can recall approved requests
           const cancelBtn = canCancel
             ? <button className={`${styles.iconBtn} ${styles.dangerBtn}`} onClick={() => handleCancel(row)} title="Cancel"><FiTrash2 /></button>
             : canRecall
