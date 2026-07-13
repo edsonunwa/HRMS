@@ -32,6 +32,7 @@ const TransferList    = lazy(() => import('../pages/transfers/TransferList'));
 const EvaluationList  = lazy(() => import('../pages/evaluation/EvaluationList'));
 const TraineeList     = lazy(() => import('../pages/trainees/TraineeList'));
 const ReportsOverview = lazy(() => import('../pages/reports/ReportsOverview'));
+const Notifications   = lazy(() => import('../pages/notifications/Notifications'));
 const UserManagement  = lazy(() => import('../pages/settings/UserManagement'));
 const SystemLogs      = lazy(() => import('../pages/logs/SystemLogs'));
 
@@ -148,6 +149,9 @@ function AppRoutes() {
         } />
         <Route path="/reports" element={
           <ProtectedRoute><ReportsOverview /></ProtectedRoute>
+        } />
+        <Route path="/notifications" element={
+          <ProtectedRoute><Notifications /></ProtectedRoute>
         } />
         <Route path="/settings" element={
           <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>

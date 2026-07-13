@@ -28,11 +28,12 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
     dept_head_name     = serializers.SerializerMethodField()
     senior_mgmt_exists = serializers.SerializerMethodField()
     senior_mgmt_names  = serializers.SerializerMethodField()
+    skipped_levels     = serializers.SerializerMethodField()
 
     class Meta:
         model  = LeaveRequest
         fields = '__all__'
-        read_only_fields = ['employee', 'status', 'current_level', 'applied_at']
+        read_only_fields = ['employee', 'status', 'applied_at']
 
     def get_approvals(self, obj):
         return LeaveApprovalSerializer(obj.approvals.all(), many=True).data
@@ -72,6 +73,21 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
                 user__is_active=True,
             ).values_list('user__first_name', 'user__last_name')
         )
+
+    def get_skipped_levels(self, obj):
+        """Return list of approval levels that are skipped for this request."""
+        from apps.authentication.models import ROLES
+        skipped = []
+        
+        # Department Heads skip Level 2 (their own level)
+        if obj.employee.user.role == ROLES.DEPARTMENT_HEAD:
+            skipped.append(2)
+        
+        # Senior Managers skip Level 3 (their own level)
+        if obj.employee.user.role == ROLES.SENIOR_MANAGEMENT:
+            skipped.append(3)
+        
+        return skipped
 
     def create(self, validated_data):
         user = self.context['request'].user
