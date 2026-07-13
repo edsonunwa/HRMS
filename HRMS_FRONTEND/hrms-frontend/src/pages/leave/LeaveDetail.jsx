@@ -23,6 +23,9 @@ function AuditTrail({ request }) {
   const approvalsByLevel = {};
   approvals.forEach((a) => { approvalsByLevel[a.level] = a; });
 
+  // Use skipped_levels from backend to determine which levels are skipped
+  const skippedLevels = request.skipped_levels || [];
+
   // Determine which levels are relevant (skip unassigned ones)
   const hasLevel = {
     1: !!request.supervisor_user_id,
@@ -38,7 +41,7 @@ function AuditTrail({ request }) {
         const isApproved = approval?.decision === 'approved';
         const isRejected = approval?.decision === 'rejected';
         const isCurrent = !approval && request.status === 'pending' && request.current_level === lvl;
-        const isSkipped = !approval && request.status !== 'pending' && !isApproved && !isRejected;
+        const isSkipped = skippedLevels.includes(lvl);
         const isLast = idx === arr.length - 1;
 
         let stateClass = styles.nodeWaiting;
@@ -73,7 +76,7 @@ function AuditTrail({ request }) {
                 </>
               ) : (
                 <div className={styles.trailMeta} style={{ color: 'var(--color-text-muted)' }}>
-                  {isCurrent ? 'Pending action' : request.status !== 'pending' ? 'Not reached' : 'Pending'}
+                  {isCurrent ? 'Pending action' : isSkipped ? 'Skipped' : request.status !== 'pending' ? 'Not reached' : 'Pending'}
                 </div>
               )}
             </div>
