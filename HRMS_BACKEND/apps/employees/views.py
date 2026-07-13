@@ -71,6 +71,7 @@ class EmployeeDetailView(AuditLogMixin, generics.RetrieveUpdateDestroyAPIView):
 
 class MyProfileView(AuditLogMixin, generics.RetrieveUpdateAPIView):
     """GET/PATCH /api/employees/me/ — any logged-in employee."""
+    queryset           = Employee.objects.select_related('user', 'department', 'position', 'grade', 'supervisor').all()
     serializer_class   = EmployeeDetailSerializer
     permission_classes = [IsAuthenticated]
 
