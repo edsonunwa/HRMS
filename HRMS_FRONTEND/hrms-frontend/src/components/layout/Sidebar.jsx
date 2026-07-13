@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   FiUsers, FiClock, FiTrendingUp, FiRepeat, FiAward,
   FiBriefcase, FiBook, FiBarChart2, FiSettings, FiHelpCircle,
-  FiLogOut, FiPlus,
+  FiLogOut, FiPlus, FiShield,
 } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import { ROLES, ROLE_DASHBOARD_MAP } from '../../utils/constants';
@@ -19,6 +19,7 @@ const NAV_ITEMS = [
   { icon: <FiBook />,       label: 'Trainees & Interns',     path: '/trainees' },
   { icon: <FiBarChart2 />,  label: 'Reports',                path: '/reports' },
   { icon: <FiSettings />,   label: 'Settings',                path: '/settings', adminOnly: true },
+  { icon: <FiShield />,     label: 'System Audit Logs',      path: '/audit-logs', adminOnly: true },
 ];
 
 function Sidebar() {

@@ -7,9 +7,10 @@ from .serializers import (
     EmployeeListSerializer, EmployeeDetailSerializer,
 )
 from apps.authentication.permissions import IsHROrAdmin, IsDepartmentHeadOrAbove
+from apps.authentication.audit import AuditLogMixin
 
 
-class DepartmentListCreateView(generics.ListCreateAPIView):
+class DepartmentListCreateView(AuditLogMixin, generics.ListCreateAPIView):
     queryset           = Department.objects.all()
     serializer_class   = DepartmentSerializer
     permission_classes = [IsAuthenticated]
@@ -17,25 +18,25 @@ class DepartmentListCreateView(generics.ListCreateAPIView):
     search_fields      = ['name', 'code', 'region']
 
 
-class DepartmentDetailView(generics.RetrieveUpdateDestroyAPIView):
+class DepartmentDetailView(AuditLogMixin, generics.RetrieveUpdateDestroyAPIView):
     queryset           = Department.objects.all()
     serializer_class   = DepartmentSerializer
     permission_classes = [IsHROrAdmin]
 
 
-class GradeListCreateView(generics.ListCreateAPIView):
+class GradeListCreateView(AuditLogMixin, generics.ListCreateAPIView):
     queryset           = Grade.objects.all()
     serializer_class   = GradeSerializer
     permission_classes = [IsHROrAdmin]
 
 
-class GradeDetailView(generics.RetrieveUpdateDestroyAPIView):
+class GradeDetailView(AuditLogMixin, generics.RetrieveUpdateDestroyAPIView):
     queryset           = Grade.objects.all()
     serializer_class   = GradeSerializer
     permission_classes = [IsHROrAdmin]
 
 
-class PositionListCreateView(generics.ListCreateAPIView):
+class PositionListCreateView(AuditLogMixin, generics.ListCreateAPIView):
     queryset           = Position.objects.all()
     serializer_class   = PositionSerializer
     permission_classes = [IsHROrAdmin]
@@ -44,13 +45,13 @@ class PositionListCreateView(generics.ListCreateAPIView):
     search_fields      = ['title']
 
 
-class PositionDetailView(generics.RetrieveUpdateDestroyAPIView):
+class PositionDetailView(AuditLogMixin, generics.RetrieveUpdateDestroyAPIView):
     queryset           = Position.objects.all()
     serializer_class   = PositionSerializer
     permission_classes = [IsHROrAdmin]
 
 
-class EmployeeListCreateView(generics.ListCreateAPIView):
+class EmployeeListCreateView(AuditLogMixin, generics.ListCreateAPIView):
     queryset           = Employee.objects.select_related('user', 'department', 'position').all()
     permission_classes = [IsDepartmentHeadOrAbove]
     filter_backends    = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -62,13 +63,13 @@ class EmployeeListCreateView(generics.ListCreateAPIView):
         return EmployeeDetailSerializer if self.request.method == 'POST' else EmployeeListSerializer
 
 
-class EmployeeDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset           = Employee.objects.select_related('user', 'department', 'position', 'grade', 'supervisor').all()
+class EmployeeDetailView(AuditLogMixin, generics.RetrieveUpdateDestroyAPIView):
+    queryset           = Employee.objects.select_related('user', 'department', 'position', 'grade').all()
     serializer_class   = EmployeeDetailSerializer
     permission_classes = [IsDepartmentHeadOrAbove]
 
 
-class MyProfileView(generics.RetrieveUpdateAPIView):
+class MyProfileView(AuditLogMixin, generics.RetrieveUpdateAPIView):
     """GET/PATCH /api/employees/me/ — any logged-in employee."""
     queryset           = Employee.objects.select_related('user', 'department', 'position', 'grade', 'supervisor').all()
     serializer_class   = EmployeeDetailSerializer

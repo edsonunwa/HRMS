@@ -4,9 +4,10 @@ from django_filters.rest_framework import DjangoFilterBackend
 from .models import TrainingProgram, Trainee, TraineeAssessment, TraineeCourse
 from .serializers import TrainingProgramSerializer, TraineeSerializer, TraineeAssessmentSerializer, TraineeCourseSerializer
 from apps.authentication.permissions import IsHROrAdmin, IsDepartmentHeadOrAbove
+from apps.authentication.audit import AuditLogMixin, log_audit_event
 
 
-class TrainingProgramListCreateView(generics.ListCreateAPIView):
+class TrainingProgramListCreateView(AuditLogMixin, generics.ListCreateAPIView):
     queryset           = TrainingProgram.objects.select_related("department","coordinator").all()
     serializer_class   = TrainingProgramSerializer
     permission_classes = [IsHROrAdmin]
@@ -15,13 +16,13 @@ class TrainingProgramListCreateView(generics.ListCreateAPIView):
     search_fields      = ["title"]
 
 
-class TrainingProgramDetailView(generics.RetrieveUpdateDestroyAPIView):
+class TrainingProgramDetailView(AuditLogMixin, generics.RetrieveUpdateDestroyAPIView):
     queryset           = TrainingProgram.objects.all()
     serializer_class   = TrainingProgramSerializer
     permission_classes = [IsHROrAdmin]
 
 
-class TraineeListCreateView(generics.ListCreateAPIView):
+class TraineeListCreateView(AuditLogMixin, generics.ListCreateAPIView):
     serializer_class   = TraineeSerializer
     permission_classes = [IsDepartmentHeadOrAbove]
     filter_backends    = [DjangoFilterBackend, filters.SearchFilter]
@@ -43,13 +44,13 @@ class TraineeListCreateView(generics.ListCreateAPIView):
             return Trainee.objects.none()
 
 
-class TraineeDetailView(generics.RetrieveUpdateAPIView):
+class TraineeDetailView(AuditLogMixin, generics.RetrieveUpdateAPIView):
     queryset           = Trainee.objects.all()
     serializer_class   = TraineeSerializer
     permission_classes = [IsAuthenticated]
 
 
-class TraineeAssessmentListCreateView(generics.ListCreateAPIView):
+class TraineeAssessmentListCreateView(AuditLogMixin, generics.ListCreateAPIView):
     serializer_class   = TraineeAssessmentSerializer
     permission_classes = [IsDepartmentHeadOrAbove]
 
@@ -57,10 +58,19 @@ class TraineeAssessmentListCreateView(generics.ListCreateAPIView):
         return TraineeAssessment.objects.filter(trainee_id=self.kwargs.get("trainee_pk"))
 
     def perform_create(self, serializer):
-        serializer.save(trainee_id=self.kwargs.get("trainee_pk"))
+        instance = serializer.save(trainee_id=self.kwargs.get("trainee_pk"))
+        log_audit_event(
+            action='CREATE',
+            resource='TraineeAssessment',
+            request=self.request,
+            user=self.request.user,
+            instance=instance,
+            detail=f'Created trainee assessment #{instance.pk}',
+            metadata={'trainee_pk': self.kwargs.get("trainee_pk")},
+        )
 
 
-class TraineeCourseListCreateView(generics.ListCreateAPIView):
+class TraineeCourseListCreateView(AuditLogMixin, generics.ListCreateAPIView):
     serializer_class   = TraineeCourseSerializer
     permission_classes = [IsAuthenticated]
 
@@ -68,7 +78,16 @@ class TraineeCourseListCreateView(generics.ListCreateAPIView):
         return TraineeCourse.objects.filter(trainee_id=self.kwargs.get("trainee_pk"))
 
     def perform_create(self, serializer):
-        serializer.save(trainee_id=self.kwargs.get("trainee_pk"))
+        instance = serializer.save(trainee_id=self.kwargs.get("trainee_pk"))
+        log_audit_event(
+            action='CREATE',
+            resource='TraineeCourse',
+            request=self.request,
+            user=self.request.user,
+            instance=instance,
+            detail=f'Created trainee course #{instance.pk}',
+            metadata={'trainee_pk': self.kwargs.get("trainee_pk")},
+        )
 
 
 class MyTraineeProfileView(generics.RetrieveAPIView):
