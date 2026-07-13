@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FiPlus, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import DataTable from '../../components/common/DataTable';
 import FormModal from '../../components/common/FormModal';
@@ -343,6 +344,7 @@ function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, pos
 }
 
 function EmployeesTab({ canWrite }) {
+  const navigate = useNavigate();
   const { data, loading, error, refetch } = useApiResource(employeesService);
   const filtered = useSearch(data, ['employee_id', 'full_name', 'department_name', 'position_title', 'employment_status', 'contract_type']);
   const departmentsRes = useApiResource(departmentsService);
@@ -392,7 +394,9 @@ function EmployeesTab({ canWrite }) {
 
   const columns = [
     { key: 'employee_id', label: 'ID' },
-    { key: 'full_name', label: 'Name' },
+    { key: 'full_name', label: 'Name', render: (r) => (
+      <span className={styles.employeeName}>{r.full_name}</span>
+    ) },
     { key: 'department_name', label: 'Department' },
     { key: 'position_title', label: 'Position' },
     { key: 'employment_status', label: 'Status', render: (r) => <StatusBadge status={r.employment_status} /> },
@@ -411,6 +415,7 @@ function EmployeesTab({ canWrite }) {
         columns={columns}
         rows={filtered}
         loading={loading}
+        onRowClick={(row) => navigate(`/workforce/${row.id}`)}
         actions={canWrite ? (row) => (
           <>
             <button className={styles.iconBtn} onClick={() => openEdit(row)} disabled={loadingEdit}><FiEdit2 /></button>
