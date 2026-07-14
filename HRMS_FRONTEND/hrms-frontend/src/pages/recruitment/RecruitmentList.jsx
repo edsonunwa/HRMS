@@ -5,6 +5,7 @@ import DataTable from '../../components/common/DataTable';
 import FormModal from '../../components/common/FormModal';
 import StatusBadge from '../../components/common/StatusBadge';
 import { useApiResource } from '../../hooks/useApiResource';
+import { useSearch } from '../../hooks/useSearch';
 import { useAuth } from '../../context/AuthContext';
 import { jobsService, applicationsService, interviewsService, offersService } from '../../services/recruitmentService';
 import { departmentsService, positionsService, gradesService } from '../../services/employeesService';
@@ -114,6 +115,7 @@ function JobFormModal({ editing, departments, positions, grades, onClose, onSave
 
 function JobsTab({ canWrite }) {
   const { data, loading, error, refetch } = useApiResource(jobsService);
+  const filtered = useSearch(data, ['reference_no', 'title', 'department_name', 'job_type']);
   const departmentsRes = useApiResource(departmentsService);
   const positionsRes = useApiResource(positionsService);
   const gradesRes = useApiResource(gradesService);
@@ -149,7 +151,7 @@ function JobsTab({ canWrite }) {
       )}
       <DataTable
         columns={columns}
-        rows={data}
+        rows={filtered}
         loading={loading}
         actions={canWrite ? (row) => (
           <>
@@ -228,6 +230,7 @@ function ApplicationFormModal({ openJobs, onClose, onSaved }) {
 
 function ApplicationsTab({ canManage }) {
   const { data, loading, error, refetch } = useApiResource(applicationsService);
+  const filtered = useSearch(data, ['job_ref', 'job_title', 'applicant_name', 'status']);
   const jobsRes = useApiResource(jobsService, { status: 'open' });
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -258,7 +261,7 @@ function ApplicationsTab({ canManage }) {
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--space-md)' }}>
         <button className={styles.btnPrimary} onClick={() => setModalOpen(true)}><FiPlus /> Apply for a Job</button>
       </div>
-      <DataTable columns={columns} rows={data} loading={loading} />
+      <DataTable columns={columns} rows={filtered} loading={loading} />
       {modalOpen && (
         <ApplicationFormModal openJobs={jobsRes.data} onClose={() => setModalOpen(false)} onSaved={handleSaved} />
       )}
@@ -347,6 +350,7 @@ function InterviewFormModal({ editing, applications, users, onClose, onSaved }) 
 
 function InterviewsTab({ canWrite }) {
   const { data, loading, error, refetch } = useApiResource(interviewsService);
+  const filtered = useSearch(data, ['interview_type', 'venue', 'outcome']);
   const applicationsRes = useApiResource(applicationsService);
   const [users, setUsers] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
@@ -383,7 +387,7 @@ function InterviewsTab({ canWrite }) {
       )}
       <DataTable
         columns={columns}
-        rows={data}
+        rows={filtered}
         loading={loading}
         actions={canWrite ? (row) => (
           <>
@@ -456,6 +460,7 @@ function OfferFormModal({ editing, applications, onClose, onSaved }) {
 
 function OffersTab({ canWrite }) {
   const { data, loading, error, refetch } = useApiResource(offersService);
+  const filtered = useSearch(data, ['offered_salary', 'status']);
   const applicationsRes = useApiResource(applicationsService);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -482,7 +487,7 @@ function OffersTab({ canWrite }) {
       )}
       <DataTable
         columns={columns}
-        rows={data}
+        rows={filtered}
         loading={loading}
         actions={canWrite ? (row) => (
           <button className={styles.iconBtn} onClick={() => openEdit(row)}><FiEdit2 /></button>

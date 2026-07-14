@@ -6,21 +6,22 @@ from .models import PerformanceCycle, KPI, PerformanceReview, JobEvaluation
 from .serializers import PerformanceCycleSerializer, KPISerializer, PerformanceReviewSerializer, JobEvaluationSerializer
 from apps.authentication.permissions import IsHROrAdmin, IsDepartmentHeadOrAbove
 from rest_framework.permissions import IsAuthenticated
+from apps.authentication.audit import AuditLogMixin
 
 
-class CycleListCreateView(generics.ListCreateAPIView):
+class CycleListCreateView(AuditLogMixin, generics.ListCreateAPIView):
     queryset           = PerformanceCycle.objects.all()
     serializer_class   = PerformanceCycleSerializer
     permission_classes = [IsHROrAdmin]
 
 
-class CycleDetailView(generics.RetrieveUpdateDestroyAPIView):
+class CycleDetailView(AuditLogMixin, generics.RetrieveUpdateDestroyAPIView):
     queryset           = PerformanceCycle.objects.all()
     serializer_class   = PerformanceCycleSerializer
     permission_classes = [IsHROrAdmin]
 
 
-class KPIListCreateView(generics.ListCreateAPIView):
+class KPIListCreateView(AuditLogMixin, generics.ListCreateAPIView):
     serializer_class   = KPISerializer
     permission_classes = [IsAuthenticated]
     filter_backends    = [DjangoFilterBackend]
@@ -28,18 +29,18 @@ class KPIListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role in ("hr_officer","admin","department_head"):
+        if user.role in ("hr_officer","hr_director","admin","department_head"):
             return KPI.objects.all()
-        return KPI.objects.filter(employee=user.employee_profile)
+        return KPI.objects.filter(employee=user.get_employee_profile())
 
 
-class KPIDetailView(generics.RetrieveUpdateDestroyAPIView):
+class KPIDetailView(AuditLogMixin, generics.RetrieveUpdateDestroyAPIView):
     queryset           = KPI.objects.all()
     serializer_class   = KPISerializer
     permission_classes = [IsAuthenticated]
 
 
-class ReviewListCreateView(generics.ListCreateAPIView):
+class ReviewListCreateView(AuditLogMixin, generics.ListCreateAPIView):
     serializer_class   = PerformanceReviewSerializer
     permission_classes = [IsDepartmentHeadOrAbove]
     filter_backends    = [DjangoFilterBackend, filters.SearchFilter]
@@ -48,20 +49,26 @@ class ReviewListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role in ("hr_officer","admin"):
+        if user.role in ("hr_officer","hr_director","admin"):
             return PerformanceReview.objects.all()
         if user.role == "department_head":
-            return PerformanceReview.objects.filter(employee__department=user.employee_profile.department)
-        return PerformanceReview.objects.filter(employee=user.employee_profile)
+            profile = user.get_employee_profile()
+            if profile is None:
+                return PerformanceReview.objects.none()
+            return PerformanceReview.objects.filter(employee__department=profile.department)
+        profile = user.get_employee_profile()
+        if profile is None:
+            return PerformanceReview.objects.none()
+        return PerformanceReview.objects.filter(employee=profile)
 
 
-class ReviewDetailView(generics.RetrieveUpdateAPIView):
+class ReviewDetailView(AuditLogMixin, generics.RetrieveUpdateAPIView):
     queryset           = PerformanceReview.objects.all()
     serializer_class   = PerformanceReviewSerializer
     permission_classes = [IsAuthenticated]
 
 
-class JobEvaluationListCreateView(generics.ListCreateAPIView):
+class JobEvaluationListCreateView(AuditLogMixin, generics.ListCreateAPIView):
     queryset           = JobEvaluation.objects.all()
     serializer_class   = JobEvaluationSerializer
     permission_classes = [IsHROrAdmin]
@@ -69,7 +76,7 @@ class JobEvaluationListCreateView(generics.ListCreateAPIView):
     filterset_fields   = ["status","position"]
 
 
-class JobEvaluationDetailView(generics.RetrieveUpdateAPIView):
+class JobEvaluationDetailView(AuditLogMixin, generics.RetrieveUpdateAPIView):
     queryset           = JobEvaluation.objects.all()
     serializer_class   = JobEvaluationSerializer
     permission_classes = [IsHROrAdmin]

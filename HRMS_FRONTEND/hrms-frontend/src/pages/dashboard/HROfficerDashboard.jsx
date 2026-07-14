@@ -1,154 +1,167 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FiDownload, FiZap, FiMoreVertical } from 'react-icons/fi';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import { employeesService } from '../../services/employeesService';
+import { leaveRequestsService } from '../../services/leaveService';
 import styles from './HROfficerDashboard.module.css';
 
-const INTERVIEWS = [
-  { time:'09:00',  name:'Okello Moses',   role:'System Administrator Role', toggle:true },
-  { time:'11:30',  name:'Nantongo Jesca', role:'HR Assistant Role',         toggle:true },
-  { time:'02:00',  name:'Musa Ibrahim',   role:'Public Relations Officer',  toggle:false },
-];
-
-const RECORDS = [
-  { init:'BK', name:'Brian Katumba',   id:'NWSC-0124', dept:'Technical Ops',  status:'active',    updated:'2 hours ago' },
-  { init:'SN', name:'Sylvia Namutebi', id:'NWSC-0582', dept:'Finance',        status:'on_leave',  updated:'Yesterday'   },
-  { init:'JW', name:'James Walusimbi', id:'NWSC-0911', dept:'Customer Care',  status:'probation', updated:'Apr 12, 2024' },
-];
-
-const STATUS_MAP = { active:'ACTIVE', on_leave:'ON LEAVE', probation:'PROBATION' };
-
-const COMPLIANCE = [
-  { icon:'⚠️', title:'Certification Expiry',     body:'12 technical staff licenses expiring within 30 days. Action required for recertification training.', link:'Initiate Training →' },
-  { icon:'📄', title:'Tax Compliance Update',     body:'NSSF contributions for Q1 verified. All reports ready for regulatory submission.',                   link:'View Documents ⊕' },
-];
+const STATUS_MAP = { active:'ACTIVE', on_leave:'ON LEAVE', suspended:'SUSPENDED', probation:'PROBATION', terminated:'TERMINATED', retired:'RETIRED' };
 
 export default function HROfficerDashboard() {
+  const navigate = useNavigate();
+  const [employees, setEmployees] = useState([]);
+  const [leaveRequests, setLeaveRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [empData, leaveData] = await Promise.all([
+          employeesService.list({ limit: 5 }),
+          leaveRequestsService.list({ limit: 5 }),
+        ]);
+        setEmployees(Array.isArray(empData) ? empData : empData.results || []);
+        setLeaveRequests(Array.isArray(leaveData) ? leaveData : leaveData.results || []);
+      } catch (err) {
+        setError('Failed to load dashboard data.');
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
+  const pendingLeaveCount = leaveRequests.filter((lr) => lr.status === 'pending').length;
+  const activeEmployees = employees.filter((e) => e.employment_status === 'active').length;
+  const totalEmployees = employees.length;
+
+  if (loading) {
+    return (
+      <DashboardLayout portalLabel="HR Operations Portal" searchPlaceholder="Search records, staff ID, or files…">
+        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>Loading dashboard data…</div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout portalLabel="HR Operations Portal" searchPlaceholder="Search records, staff ID, or files…">
+        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-danger)' }}>{error}</div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout portalLabel="HR Operations Portal" searchPlaceholder="Search records, staff ID, or files…">
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Operations Overview</h1>
-          <p className={styles.sub}>Daily operational summary for April 14, 2024</p>
+          <p className={styles.sub}>Real-time HR operations summary</p>
         </div>
         <div className={styles.headerBtns}>
-          <button className={styles.btnOutline}><FiDownload /> Export Report</button>
-          <button className={styles.btnPrimary}><FiZap /> Quick Action</button>
+          <button className={styles.btnOutline} onClick={() => navigate('/reports')}><FiDownload /> Export Report</button>
+          <button className={styles.btnPrimary} onClick={() => navigate('/workforce')}><FiZap /> Quick Action</button>
         </div>
       </div>
 
       <div className={styles.twoCol}>
-        {/* Recruitment Pipeline */}
+        {/* Pending Requests */}
         <div className={styles.card}>
           <div className={styles.cardHeader}>
-            <span>🧑‍💼 Recruitment Pipeline</span>
-            <span className={styles.badge12}>12 New Applicants</span>
+            <span>📋 Pending Leave Requests</span>
+            {pendingLeaveCount > 0 && <span className={styles.badge12}>{pendingLeaveCount} Pending</span>}
           </div>
-          <div className={styles.pipelineRow}>
-            <div className={styles.newApps}>
-              <div className={styles.pipeLabel}>NEW APPLICATIONS</div>
-              <div className={styles.pipeVal}>48</div>
-              <div className={styles.pipeTrend}>+12% this week</div>
-            </div>
-            <div className={styles.interviews}>
-              <div className={styles.interviewHeader}>Interviews Scheduled (Today)</div>
-              {INTERVIEWS.map((iv,i) => (
-                <div key={i} className={styles.interviewRow}>
-                  <span className={styles.ivTime}>{iv.time}</span>
-                  <div className={styles.ivInfo}>
-                    <div className={styles.ivName}>{iv.name}</div>
-                    <div className={styles.ivRole}>{iv.role}</div>
+          {leaveRequests.length === 0 ? (
+            <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>No pending requests.</div>
+          ) : (
+            leaveRequests.slice(0, 5).map((lr) => (
+              <div key={lr.id} className={styles.pipelineRow}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid #f0f0f0' }}>
+                  <div>
+                    <strong>{lr.employee?.user?.full_name || lr.employee_name || 'Employee'}</strong>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                      {lr.leave_type_name || 'Leave'} — {lr.start_date} to {lr.end_date}
+                    </div>
                   </div>
-                  <label className={styles.toggle}>
-                    <input type="checkbox" defaultChecked={iv.toggle}/>
-                    <span className={styles.slider}/>
-                  </label>
-                  <button className={styles.detailsBtn}>Details</button>
+                  <span style={{
+                    fontSize: '0.7rem', fontWeight: 'bold', padding: '2px 8px', borderRadius: '4px',
+                    background: lr.status === 'pending' ? '#fff3cd' : lr.status === 'approved' ? '#e6f4ea' : '#fdecea',
+                    color: lr.status === 'pending' ? '#856404' : lr.status === 'approved' ? '#28a745' : '#dc3545',
+                  }}>
+                    {lr.status?.toUpperCase()}
+                  </span>
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
+            ))
+          )}
         </div>
 
-        {/* Payroll Status */}
+        {/* Quick Stats */}
         <div className={styles.payrollCard}>
-          <div className={styles.cardHeader}>💰 Payroll Status <span className={styles.inProgress}>IN PROGRESS</span></div>
-          <div className={styles.payrollSub}>April Cycle Completion</div>
-          <div className={styles.progressWrap}>
-            <div className={styles.progressBar}><div className={styles.progressFill} style={{width:'78%'}}/></div>
-            <div className={styles.progressPct}>78%</div>
+          <div className={styles.cardHeader}>📊 Workforce Summary</div>
+          <div style={{ padding: '1rem 0' }}>
+            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Total Employees</div>
+              <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--color-primary)' }}>{totalEmployees || '—'}</div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+              <div style={{ background: '#e6f4ea', padding: '0.5rem', borderRadius: 'var(--radius-sm)' }}>
+                <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>ACTIVE</div>
+                <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#28a745' }}>{activeEmployees}</div>
+              </div>
+              <div style={{ background: '#fff3cd', padding: '0.5rem', borderRadius: 'var(--radius-sm)' }}>
+                <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>PENDING LEAVE</div>
+                <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#856404' }}>{pendingLeaveCount}</div>
+              </div>
+            </div>
           </div>
-          <div className={styles.payrollMeta}>
-            <div><div className={styles.metaLabel}>VERIFIED</div><div className={styles.metaVal}>1,240</div></div>
-            <div><div className={styles.metaLabel}>PENDING</div><div className={styles.metaVal} style={{color:'var(--color-warning)'}}>342</div></div>
-          </div>
-          <button className={styles.validateBtn}>Run Validation Check</button>
         </div>
       </div>
 
       {/* Employee Records */}
-      <div className={styles.card} style={{marginTop:'var(--space-md)'}}>
+      <div className={styles.card} style={{ marginTop: 'var(--space-md)' }}>
         <div className={styles.cardHeader}>
-          <span>🗃 Employee Records Activity</span>
-          <div className={styles.tabGroup}>
-            <button className={`${styles.tab} ${styles.activeTab}`}>All Records</button>
-            <button className={styles.tab}>Newly Onboarded</button>
-            <button className={styles.tab}>Departed</button>
-          </div>
+          <span>🗃 Employee Records</span>
         </div>
-        <table className={styles.table}>
-          <thead><tr><th>Employee Name</th><th>ID</th><th>Department</th><th>Status</th><th>Last Updated</th><th>Actions</th></tr></thead>
-          <tbody>
-            {RECORDS.map(r => (
-              <tr key={r.id}>
-                <td><div className={styles.empCell}><div className={styles.empAva}>{r.init}</div>{r.name}</div></td>
-                <td>{r.id}</td><td>{r.dept}</td>
-                <td><span className={`${styles.statusBadge} ${styles[r.status]}`}>{STATUS_MAP[r.status]}</span></td>
-                <td>{r.updated}</td>
-                <td><FiMoreVertical className={styles.moreIcon}/></td>
+        {employees.length === 0 ? (
+          <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>No employee records found.</div>
+        ) : (
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Employee Name</th>
+                <th>ID</th>
+                <th>Department</th>
+                <th>Status</th>
+                <th>Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        <button className={styles.viewAllBtn}>View All 1,420 Records</button>
-      </div>
-
-      <div className={styles.bottomRow}>
-        {/* Compliance */}
-        <div className={styles.card}>
-          <div className={styles.cardHeader}>
-            <span>⚖️ Compliance Tracking</span>
-            <span className={styles.urgentBadge}>3 Urgent Matters</span>
-          </div>
-          {COMPLIANCE.map((c,i) => (
-            <div key={i} className={styles.complianceItem}>
-              <span className={styles.compIcon}>{c.icon}</span>
-              <div>
-                <div className={styles.compTitle}>{c.title}</div>
-                <div className={styles.compBody}>{c.body}</div>
-                <button className={styles.compLink}>{c.link}</button>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* KPIs */}
-        <div className={styles.kpiStack}>
-          <div className={styles.kpiCard}>
-            <div className={styles.kpiLabel}>TOTAL WORKFORCE</div>
-            <div className={styles.kpiVal}>2,481</div>
-            <div className={styles.kpiTrend}>+5% vs last quarter</div>
-          </div>
-          <div className={styles.kpiCard}>
-            <div className={styles.kpiLabel}>RETENTION RATE</div>
-            <div className={styles.kpiVal}>94%</div>
-            <div className={styles.retentionBar}><div className={styles.retentionFill} style={{width:'94%'}}/></div>
-          </div>
-          <div className={styles.kpiCard}>
-            <div className={styles.kpiLabel}>SYSTEM INTEGRITY</div>
-            <div className={styles.integrityRow}><span className={styles.greenDot}/>LIVE MO...</div>
-            <div className={styles.integritySub}>Last backup: 14:00 PM (Successful)</div>
-          </div>
-        </div>
+            </thead>
+            <tbody>
+              {employees.slice(0, 5).map((emp) => (
+                <tr key={emp.id}>
+                  <td>
+                    <div className={styles.empCell}>
+                      <div className={styles.empAva}>
+                        {((emp.user?.first_name?.[0] || '') + (emp.user?.last_name?.[0] || '')).toUpperCase() || 'E'}
+                      </div>
+                      {emp.user?.full_name || emp.full_name || emp.employee_id}
+                    </div>
+                  </td>
+                  <td>{emp.employee_id}</td>
+                  <td>{emp.department?.name || '—'}</td>
+                  <td>
+                    <span className={`${styles.statusBadge} ${styles[emp.employment_status] || ''}`}>
+                      {STATUS_MAP[emp.employment_status] || emp.employment_status?.toUpperCase() || '—'}
+                    </span>
+                  </td>
+                  <td><FiMoreVertical className={styles.moreIcon} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </DashboardLayout>
   );

@@ -6,6 +6,7 @@ import FormModal from '../../components/common/FormModal';
 import StatusBadge from '../../components/common/StatusBadge';
 import EmployeePicker from '../../components/common/EmployeePicker';
 import { useApiResource } from '../../hooks/useApiResource';
+import { useSearch } from '../../hooks/useSearch';
 import { useAuth } from '../../context/AuthContext';
 import { cyclesService, kpisService, reviewsService, jobEvaluationsService } from '../../services/evaluationService';
 import { employeesService, positionsService, gradesService } from '../../services/employeesService';
@@ -60,6 +61,7 @@ function CycleFormModal({ editing, onClose, onSaved }) {
 
 function CyclesTab({ canWrite }) {
   const { data, loading, error, refetch } = useApiResource(cyclesService);
+  const filtered = useSearch(data, ['name', 'year', 'period']);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
 
@@ -91,7 +93,7 @@ function CyclesTab({ canWrite }) {
       )}
       <DataTable
         columns={columns}
-        rows={data}
+        rows={filtered}
         loading={loading}
         actions={canWrite ? (row) => (
           <>
@@ -167,6 +169,7 @@ function KPIFormModal({ editing, cycles, employeeOptions, onClose, onSaved }) {
 
 function KPIsTab() {
   const { data, loading, error, refetch } = useApiResource(kpisService);
+  const filtered = useSearch(data, ['description', 'target', 'weight']);
   const cyclesRes = useApiResource(cyclesService);
   const employeesRes = useApiResource(employeesService);
   const [modalOpen, setModalOpen] = useState(false);
@@ -198,7 +201,7 @@ function KPIsTab() {
       </div>
       <DataTable
         columns={columns}
-        rows={data}
+        rows={filtered}
         loading={loading}
         actions={(row) => (
           <>
@@ -259,6 +262,7 @@ function ReviewFormModal({ cycles, employeeOptions, onClose, onSaved }) {
 
 function ReviewsTab({ canWrite }) {
   const { data, loading, error, refetch } = useApiResource(reviewsService);
+  const filtered = useSearch(data, ['employee_name', 'cycle_name', 'status']);
   const cyclesRes = useApiResource(cyclesService);
   const employeesRes = useApiResource(employeesService);
   const [modalOpen, setModalOpen] = useState(false);
@@ -282,7 +286,7 @@ function ReviewsTab({ canWrite }) {
           <button className={styles.btnPrimary} onClick={() => setModalOpen(true)}><FiPlus /> New Review</button>
         </div>
       )}
-      <DataTable columns={columns} rows={data} loading={loading} />
+      <DataTable columns={columns} rows={filtered} loading={loading} />
       {modalOpen && (
         <ReviewFormModal cycles={cyclesRes.data} employeeOptions={employeeOptions} onClose={() => setModalOpen(false)} onSaved={handleSaved} />
       )}
@@ -356,6 +360,7 @@ function JobEvalFormModal({ positions, grades, onClose, onSaved }) {
 
 function JobEvaluationsTab() {
   const { data, loading, error, refetch } = useApiResource(jobEvaluationsService);
+  const filtered = useSearch(data, ['position_title', 'recommended_grade_level', 'status']);
   const positionsRes = useApiResource(positionsService);
   const gradesRes = useApiResource(gradesService);
   const [modalOpen, setModalOpen] = useState(false);
@@ -375,7 +380,7 @@ function JobEvaluationsTab() {
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--space-md)' }}>
         <button className={styles.btnPrimary} onClick={() => setModalOpen(true)}><FiPlus /> New Job Evaluation</button>
       </div>
-      <DataTable columns={columns} rows={data} loading={loading} />
+      <DataTable columns={columns} rows={filtered} loading={loading} />
       {modalOpen && (
         <JobEvalFormModal positions={positionsRes.data} grades={gradesRes.data} onClose={() => setModalOpen(false)} onSaved={handleSaved} />
       )}

@@ -26,12 +26,6 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  // Demo-only: sets a mock user without hitting the API
-  const demoLogin = useCallback((mockUser) => {
-    setUser(mockUser);
-    return ROLE_DASHBOARD_MAP[mockUser.role] || '/dashboard';
-  }, []);
-
   const logout = useCallback(() => {
     authService.logout();
     setUser(null);
@@ -48,7 +42,7 @@ export function AuthProvider({ children }) {
   }, [user]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, error, login, demoLogin, logout, hasRole, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, error, login, logout, hasRole, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

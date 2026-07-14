@@ -6,6 +6,7 @@ import FormModal from '../../components/common/FormModal';
 import StatusBadge from '../../components/common/StatusBadge';
 import EmployeePicker from '../../components/common/EmployeePicker';
 import { useApiResource } from '../../hooks/useApiResource';
+import { useSearch } from '../../hooks/useSearch';
 import { useAuth } from '../../context/AuthContext';
 import { trainingProgramsService, traineesService, traineeAssessmentsService, traineeCoursesService } from '../../services/traineesService';
 import { departmentsService, employeesService } from '../../services/employeesService';
@@ -88,6 +89,7 @@ function ProgramFormModal({ editing, departments, onClose, onSaved }) {
 
 function ProgramsTab({ canWrite }) {
   const { data, loading, error, refetch } = useApiResource(trainingProgramsService);
+  const filtered = useSearch(data, ['title', 'program_type', 'department_name', 'status']);
   const departmentsRes = useApiResource(departmentsService);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -120,7 +122,7 @@ function ProgramsTab({ canWrite }) {
       )}
       <DataTable
         columns={columns}
-        rows={data}
+        rows={filtered}
         loading={loading}
         actions={canWrite ? (row) => (
           <>
@@ -280,6 +282,7 @@ function TraineeFormModal({ programs, departments, employeeOptions, users, onClo
 
 function TraineesTab({ canWrite }) {
   const { data, loading, error, refetch } = useApiResource(traineesService);
+  const filtered = useSearch(data, ['full_name', 'program_title', 'department_name', 'trainee_type', 'status']);
   const programsRes = useApiResource(trainingProgramsService);
   const departmentsRes = useApiResource(departmentsService);
   const employeesRes = useApiResource(employeesService);
@@ -317,7 +320,7 @@ function TraineesTab({ canWrite }) {
       )}
       <DataTable
         columns={columns}
-        rows={data}
+        rows={filtered}
         loading={loading}
         actions={(row) => (
           <button className={styles.iconBtn} onClick={() => openDetail(row)} title="View details"><FiEye /></button>

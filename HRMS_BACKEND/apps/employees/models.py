@@ -6,6 +6,7 @@ class Department(models.Model):
     name        = models.CharField(max_length=100, unique=True)
     code        = models.CharField(max_length=20, unique=True)
     description = models.TextField(blank=True)
+    parent      = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='sub_departments')
     head        = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='headed_department')
     region      = models.CharField(max_length=50, blank=True)
     created_at  = models.DateTimeField(auto_now_add=True)
@@ -20,6 +21,7 @@ class Department(models.Model):
 
 class Grade(models.Model):
     level       = models.CharField(max_length=20, unique=True)   # e.g. U1, U2, U3
+    title       = models.CharField(max_length=100)
     min_salary  = models.DecimalField(max_digits=14, decimal_places=2)
     max_salary  = models.DecimalField(max_digits=14, decimal_places=2)
     description = models.TextField(blank=True)
@@ -29,7 +31,7 @@ class Grade(models.Model):
         ordering = ['level']
 
     def __str__(self):
-        return f'{self.level} — {self.max_salary}'
+        return f'{self.level} — {self.title}'
 
 
 class Position(models.Model):
@@ -69,11 +71,12 @@ class Employee(models.Model):
     department      = models.ForeignKey(Department, on_delete=models.PROTECT, related_name='employees')
     position        = models.ForeignKey(Position, on_delete=models.PROTECT)
     grade           = models.ForeignKey(Grade, null=True, blank=True, on_delete=models.SET_NULL)
+    supervisor      = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='subordinates')
 
     # Personal
     gender          = models.CharField(max_length=1, choices=GENDER_CHOICES)
     date_of_birth   = models.DateField(null=True, blank=True)
-    national_id     = models.CharField(max_length=30, unique=True, blank=True)
+    national_id     = models.CharField(max_length=30, unique=True, blank=True, null=True, default=None)
     tin_number      = models.CharField(max_length=20, blank=True)
     nssf_number     = models.CharField(max_length=20, blank=True)
     nationality     = models.CharField(max_length=50, default='Ugandan')

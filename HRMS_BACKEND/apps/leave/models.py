@@ -14,6 +14,7 @@ class LeaveType(models.Model):
 
     class Meta:
         db_table = 'leave_types'
+        ordering = ['name']
 
     def __str__(self):
         return self.name
@@ -52,6 +53,7 @@ class LeaveRequest(models.Model):
     reason         = models.TextField(blank=True)
     supporting_doc = models.FileField(upload_to='leave_docs/', null=True, blank=True)
     status         = models.CharField(max_length=20, choices=STATUS, default='pending')
+    current_level  = models.PositiveIntegerField(default=1)  # tracks which approval level is next
     applied_at     = models.DateTimeField(auto_now_add=True)
     updated_at     = models.DateTimeField(auto_now=True)
 

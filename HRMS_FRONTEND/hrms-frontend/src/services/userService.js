@@ -6,6 +6,11 @@ export const userService = {
     return Array.isArray(data) ? data : data.results;
   },
 
+  async listWithoutProfile() {
+    const { data } = await api.get('/auth/users/without-profile/');
+    return Array.isArray(data) ? data : data.results;
+  },
+
   async create(payload) {
     const { data } = await api.post('/auth/users/', payload);
     return data;

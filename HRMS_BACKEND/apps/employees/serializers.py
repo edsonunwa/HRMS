@@ -25,7 +25,7 @@ class GradeSerializer(serializers.ModelSerializer):
 
 class PositionSerializer(serializers.ModelSerializer):
     department_name = serializers.ReadOnlyField(source='department.name')
-    #grade_title     = serializers.ReadOnlyField(source='grade.title')
+    grade_title     = serializers.ReadOnlyField(source='grade.title')
 
     class Meta:
         model  = Position
@@ -60,8 +60,22 @@ class EmployeeDetailSerializer(serializers.ModelSerializer):
         queryset=Position.objects.all(), source='position', write_only=True)
     grade           = GradeSerializer(read_only=True)
     grade_id        = serializers.PrimaryKeyRelatedField(
-        queryset=Grade.objects.all(), source='grade', write_only=True, required=False)
+        queryset=Grade.objects.all(), source='grade', write_only=True, required=False, allow_null=True)
+    supervisor      = serializers.PrimaryKeyRelatedField(
+        queryset=Employee.objects.all(), allow_null=True, required=False)
+    supervisor_name = serializers.SerializerMethodField()
     full_name       = serializers.ReadOnlyField()
+    national_id     = serializers.CharField(required=False, allow_blank=True, allow_null=True, default=None)
+
+    def get_supervisor_name(self, obj):
+        """Return the supervisor's full name if one exists."""
+        if obj.supervisor:
+            return obj.supervisor.full_name
+        return None
+
+    def validate_national_id(self, value):
+        # Coerce empty string to None so unique constraint allows multiple blank entries
+        return value if value else None
 
     class Meta:
         model  = Employee

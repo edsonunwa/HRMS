@@ -2,21 +2,29 @@
 import random
 import string
 from datetime import date
-from django.utils import timezone
 
 
 def generate_employee_id():
-    """Generate NWSC-YYMM-NNNN style employee ID."""
+    """Generate NWSC-YYMM-NNNN style employee ID, guaranteed unique."""
+    from apps.employees.models import Employee
     today = date.today()
-    suffix = "".join(random.choices(string.digits, k=4))
-    return f"NWSC-{today.strftime('%y%m')}-{suffix}"
+    prefix = f"NWSC-{today.strftime('%y%m')}-"
+    for _ in range(10):
+        candidate = prefix + "".join(random.choices(string.digits, k=4))
+        if not Employee.objects.filter(employee_id=candidate).exists():
+            return candidate
+    raise RuntimeError('Could not generate a unique employee ID after 10 attempts.')
 
 
 def generate_reference_number(prefix="REF"):
-    """Generic reference number for jobs, transfers, etc."""
+    """Generic reference number for jobs, transfers, etc., guaranteed unique."""
+    from apps.recruitment.models import JobPosting
     today = date.today()
-    suffix = "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
-    return f"{prefix}-{today.year}-{suffix}"
+    for _ in range(10):
+        candidate = f"{prefix}-{today.year}-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
+        if not JobPosting.objects.filter(reference_no=candidate).exists():
+            return candidate
+    raise RuntimeError(f'Could not generate a unique reference number for prefix "{prefix}" after 10 attempts.')
 
 
 def get_financial_year(d=None):

@@ -23,22 +23,37 @@ const AdminDashboard          = lazy(() => import('../pages/dashboard/AdminDashb
 
 // Feature modules
 const EmployeeList    = lazy(() => import('../pages/employees/EmployeeList'));
+const EmployeeDetail  = lazy(() => import('../pages/employees/EmployeeDetail'));
 const ManpowerList    = lazy(() => import('../pages/manpower/ManpowerList'));
 const RecruitmentList = lazy(() => import('../pages/recruitment/RecruitmentList'));
 const LeaveList       = lazy(() => import('../pages/leave/LeaveList'));
+const LeaveDetail     = lazy(() => import('../pages/leave/LeaveDetail'));
 const TransferList    = lazy(() => import('../pages/transfers/TransferList'));
 const EvaluationList  = lazy(() => import('../pages/evaluation/EvaluationList'));
 const TraineeList     = lazy(() => import('../pages/trainees/TraineeList'));
 const ReportsOverview = lazy(() => import('../pages/reports/ReportsOverview'));
+const Notifications   = lazy(() => import('../pages/notifications/Notifications'));
 const UserManagement  = lazy(() => import('../pages/settings/UserManagement'));
+const SystemLogs      = lazy(() => import('../pages/logs/SystemLogs'));
 
 function Loading() {
   return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>;
 }
 
-function NotFoundRedirect() {
+function NotFound() {
   const { user } = useAuth();
-  return <Navigate to={user ? (ROLE_DASHBOARD_MAP[user.role] || '/dashboard/employee') : '/login'} replace />;
+  const dashboardPath = user ? (ROLE_DASHBOARD_MAP[user.role] || '/dashboard/employee') : '/login';
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      justifyContent: 'center', height: '100vh', gap: '1rem', textAlign: 'center',
+      fontFamily: 'var(--font-family, sans-serif)', color: 'var(--color-text, #111)',
+    }}>
+      <span style={{ fontSize: '5rem', fontWeight: 700, color: 'var(--color-border, #e5e7eb)', lineHeight: 1 }}>404</span>
+      <p style={{ color: 'var(--color-text-muted, #6b7280)', fontSize: '0.95rem' }}>Page not found.</p>
+      <a href={dashboardPath} style={{ fontSize: '0.9rem', color: 'var(--color-primary, #2563eb)' }}>Go to dashboard</a>
+    </div>
+  );
 }
 
 function AppRoutes() {
@@ -108,6 +123,9 @@ function AppRoutes() {
         <Route path="/workforce" element={
           <ProtectedRoute><EmployeeList /></ProtectedRoute>
         } />
+        <Route path="/workforce/:id" element={
+          <ProtectedRoute><EmployeeDetail /></ProtectedRoute>
+        } />
         <Route path="/manpower" element={
           <ProtectedRoute><ManpowerList /></ProtectedRoute>
         } />
@@ -116,6 +134,9 @@ function AppRoutes() {
         } />
         <Route path="/leave" element={
           <ProtectedRoute><LeaveList /></ProtectedRoute>
+        } />
+        <Route path="/leave/:id" element={
+          <ProtectedRoute><LeaveDetail /></ProtectedRoute>
         } />
         <Route path="/transfers" element={
           <ProtectedRoute><TransferList /></ProtectedRoute>
@@ -129,15 +150,23 @@ function AppRoutes() {
         <Route path="/reports" element={
           <ProtectedRoute><ReportsOverview /></ProtectedRoute>
         } />
+        <Route path="/notifications" element={
+          <ProtectedRoute><Notifications /></ProtectedRoute>
+        } />
         <Route path="/settings" element={
           <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
             <UserManagement />
           </ProtectedRoute>
         } />
+        <Route path="/audit-logs" element={
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+            <SystemLogs />
+          </ProtectedRoute>
+        } />
 
         {/* Fallback */}
-        <Route path="/" element={<NotFoundRedirect />} />
-        <Route path="*" element={<NotFoundRedirect />} />
+        <Route path="/" element={<Navigate to={'/login'} replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
   );

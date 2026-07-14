@@ -1,162 +1,175 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FiActivity, FiDatabase, FiShield, FiUsers, FiAlertTriangle, FiRefreshCw, FiDownload } from 'react-icons/fi';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import { employeesService } from '../../services/employeesService';
+import { reportsService } from '../../services/reportsService';
 import styles from './AdminDashboard.module.css';
 
-const SESSIONS = [
-  { init:'EO', name:'Emmanuel Okello', email:'e.okello@nwsc.co.ug', role:'HR Manager',      dept:'Headquarters', last:'Just now', status:'online' },
-  { init:'JM', name:'Jane Musoke',     email:'j.musoke@nwsc.co.ug',  role:'Payroll Officer', dept:'Finance',      last:'14m ago',  status:'online' },
-  { init:'BA', name:'Brian Atwine',    email:'b.atwine@nwsc.co.ug',  role:'System Audit',   dept:'ICT Ops',      last:'2h ago',   status:'idle'   },
-];
-
-const ALERTS = [
-  { type:'danger',  title:'Failed Login Attempt',    body:'Multiple failed attempts on Admin IP: 192.168.1.45 — 12:01 AM today' },
-  { type:'warning', title:'Database Backup Delayed', body:'Nightly sync for Jinja Region timed out — 00:02 AM today' },
-];
-
-const LOGS = [
-  { init:'SA', action:'New Employee Record Added',   meta:'By Sarah K. (Admin) • 5m ago' },
-  { init:'PM', action:'Payroll Policy Updated',      meta:'System Global Change • 43m ago' },
-  { init:'SY', action:'System Patch Applied v2.4.1', meta:'Auto-update • 2h ago' },
-];
-
-const BARS = [
-  { city:'Kampala',   h:80, primary:true },
-  { city:'Entebbe',   h:45 },
-  { city:'Jinja',     h:55 },
-  { city:'Mbarara',   h:35 },
-  { city:'Gulu',      h:30 },
-  { city:'Lira',      h:28 },
-  { city:'Ft.Portal', h:20 },
-];
-
 export default function AdminDashboard() {
+  const navigate = useNavigate();
+  const [headcount, setHeadcount] = useState(null);
+  const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [hc, empData] = await Promise.all([
+          reportsService.getHeadcount(),
+          employeesService.list({ limit: 10 }),
+        ]);
+        setHeadcount(hc);
+        setEmployees(Array.isArray(empData) ? empData : empData.results || []);
+      } catch (err) {
+        setError('Failed to load system data.');
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
+  const total = headcount?.total || 0;
+  const deptCount = headcount?.by_dept?.length || 0;
+  const statusCounts = {
+    active: employees.filter((e) => e.employment_status === 'active').length,
+    on_leave: employees.filter((e) => e.employment_status === 'on_leave').length,
+    probation: employees.filter((e) => e.employment_status === 'probation').length,
+  };
+
+  if (loading) {
+    return (
+      <DashboardLayout portalLabel="HR Operations Portal" searchPlaceholder="Search system resources…">
+        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>Loading system data…</div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout portalLabel="HR Operations Portal" searchPlaceholder="Search system resources…">
+        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-danger)' }}>{error}</div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout portalLabel="HR Operations Portal" searchPlaceholder="Search system resources…">
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>System Administration Dashboard</h1>
-          <p className={styles.sub}>Real-time infrastructure health and governance overview.</p>
+          <p className={styles.sub}>Real-time system health and workforce overview.</p>
         </div>
         <div className={styles.headerBtns}>
-          <button className={styles.btnOutline}><FiRefreshCw /> Force Re-Sync</button>
-          <button className={styles.btnPrimary}><FiDownload /> Export Status</button>
+          <button className={styles.btnOutline} onClick={() => window.location.reload()}><FiRefreshCw /> Refresh</button>
+          <button className={styles.btnPrimary} onClick={() => navigate('/settings')}><FiDownload /> Settings</button>
         </div>
       </div>
 
       {/* KPI Row */}
       <div className={styles.kpiRow}>
         <div className={styles.kpiCard}>
-          <div className={styles.kpiLabel}><FiActivity /> SERVICE UPTIME</div>
-          <div className={styles.kpiVal}>99.98%</div>
-          <div className={styles.kpiOk}>● All primary clusters operational</div>
+          <div className={styles.kpiLabel}><FiActivity /> TOTAL WORKFORCE</div>
+          <div className={styles.kpiVal}>{total.toLocaleString()}</div>
+          <div className={styles.kpiOk}>● All employee records active</div>
         </div>
         <div className={styles.kpiCard}>
-          <div className={styles.kpiLabel}><FiDatabase /> DATABASE LOAD</div>
-          <div className={styles.kpiVal}>14.2 <span className={styles.kpiUnit}>ms</span></div>
-          <div className={styles.kpiOk}>▼ 8% lower than average</div>
+          <div className={styles.kpiLabel}><FiDatabase /> DEPARTMENTS</div>
+          <div className={styles.kpiVal}>{deptCount}</div>
+          <div className={styles.kpiOk}>▼ Active organisational units</div>
         </div>
         <div className={styles.threatsCard}>
-          <div className={styles.threatsTop}><FiShield className={styles.shieldIcon}/> ACTIVE THREATS</div>
-          <div className={styles.threatsNum}>00</div>
-          <div className={styles.threatsTxt}>All security protocols verified (Last scan: 2m ago)</div>
-          <button className={styles.logsBtn}>View Security Logs</button>
+          <div className={styles.threatsTop}><FiShield className={styles.shieldIcon} /> SYSTEM STATUS</div>
+          <div className={styles.threatsNum}>OK</div>
+          <button className={styles.logsBtn} onClick={() => navigate('/audit-logs')}>View Security Logs</button>
+          <div className={styles.threatsTxt}>All systems operational</div>
+          <button className={styles.logsBtn} onClick={() => navigate('/audit-logs')}>View Audit Logs</button>
         </div>
       </div>
 
       <div className={styles.twoCol}>
-        {/* Sessions */}
+        {/* Recent Employees */}
         <div className={styles.card}>
           <div className={styles.cardHeader}>
-            <span><FiUsers /> Active User Sessions</span>
-            <button className={styles.linkBtn}>Manage All →</button>
+            <span><FiUsers /> Recent Employee Records</span>
           </div>
-          <table className={styles.table}>
-            <thead><tr><th>User</th><th>Role</th><th>Department</th><th>Last Activity</th><th>Status</th></tr></thead>
-            <tbody>
-              {SESSIONS.map(s => (
-                <tr key={s.email}>
-                  <td>
-                    <div className={styles.userCell}>
-                      <div className={styles.ava}>{s.init}</div>
-                      <div><div className={styles.uName}>{s.name}</div><div className={styles.uEmail}>{s.email}</div></div>
-                    </div>
-                  </td>
-                  <td>{s.role}</td><td>{s.dept}</td><td>{s.last}</td>
-                  <td><span className={`${styles.statusPill} ${styles[s.status]}`}>{s.status.toUpperCase()}</span></td>
+          {employees.length === 0 ? (
+            <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>No employee records found.</div>
+          ) : (
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>ID</th>
+                  <th>Department</th>
+                  <th>Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {employees.map((emp) => (
+                  <tr key={emp.id}>
+                    <td>
+                      <div className={styles.userCell}>
+                        <div className={styles.ava}>
+                          {((emp.user?.first_name?.[0] || '') + (emp.user?.last_name?.[0] || '')).toUpperCase() || 'E'}
+                        </div>
+                        <div>
+                          <div className={styles.uName}>{emp.user?.full_name || emp.full_name || emp.employee_id}</div>
+                          <div className={styles.uEmail}>{emp.email || emp.user?.email || '—'}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>{emp.employee_id}</td>
+                    <td>{emp.department_name || emp.department?.name || '—'}</td>
+                    <td>
+                      <span className={`${styles.statusPill} ${emp.employment_status === 'active' ? styles.active : styles.inactive}`}>
+                        {emp.employment_status === 'active' ? 'Active' : emp.employment_status === 'on_leave' ? 'On Leave' : emp.employment_status || '—'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
 
-        {/* Right column */}
+        {/* System Info */}
         <div className={styles.rightStack}>
           <div className={styles.card}>
             <div className={styles.cardHeader}>
-              <span><FiAlertTriangle style={{color:'#FFC107'}}/> System Alerts</span>
-              <span className={styles.newBadge}>3 NEW</span>
+              <span><FiAlertTriangle style={{ color: '#FFC107' }} /> System Health</span>
             </div>
-            {ALERTS.map((a,i) => (
-              <div key={i} className={`${styles.alertItem} ${a.type === 'danger' ? styles.alertDanger : styles.alertWarning}`}>
-                <div className={styles.alertTitle}>{a.title}</div>
-                <div className={styles.alertBody}>{a.body}</div>
-              </div>
-            ))}
+            <div style={{ padding: '0.5rem 0', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '0.85rem' }}>Total Records</span>
+              <strong>{total}</strong>
+            </div>
+            <div style={{ padding: '0.5rem 0', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '0.85rem' }}>Active</span>
+              <strong style={{ color: '#28a745' }}>{statusCounts.active}</strong>
+            </div>
+            <div style={{ padding: '0.5rem 0', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '0.85rem' }}>On Leave</span>
+              <strong style={{ color: '#ffc107' }}>{statusCounts.on_leave}</strong>
+            </div>
+            <div style={{ padding: '0.5rem 0', display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '0.85rem' }}>Probation</span>
+              <strong style={{ color: '#856404' }}>{statusCounts.probation}</strong>
+            </div>
           </div>
 
           <div className={styles.card}>
-            <div className={styles.cardHeader}><span>Audit Logs</span></div>
-            {LOGS.map((l,i) => (
-              <div key={i} className={styles.logRow}>
-                <div className={styles.logAva}>{l.init}</div>
-                <div><div className={styles.logAction}>{l.action}</div><div className={styles.logMeta}>{l.meta}</div></div>
-              </div>
-            ))}
-            <button className={styles.viewAll}>VIEW ALL LOGS</button>
+            <div className={styles.cardHeader}><span>Quick Actions</span></div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <button className={styles.logsBtn} onClick={() => navigate('/workforce')}>View All Employees</button>
+              <button className={styles.logsBtn} onClick={() => navigate('/settings')}>System Configuration</button>
+              <button className={styles.logsBtn} onClick={() => navigate('/settings')}>Audit Trail</button>
+            </div>
           </div>
         </div>
       </div>
-
-      {/* Bottom row */}
-      <div className={styles.twoCol} style={{marginTop:'var(--space-md)'}}>
-        <div className={styles.card}>
-          <div className={styles.cardHeader}><span>Network Traffic Analysis</span></div>
-          <p className={styles.chartSub}>Internal traffic between NWSC regional sub nodes.</p>
-          <div className={styles.barChart}>
-            {BARS.map(b => (
-              <div key={b.city} className={styles.barItem}>
-                <div className={styles.barFill} style={{height:`${b.h}px`, background: b.primary ? '#00244d' : '#c8dcf0'}}/>
-                <div className={styles.barLabel}>{b.city}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className={styles.rightStack}>
-          <div className={`${styles.card} ${styles.centerCard}`}>
-            <div className={styles.pendingNum}>4</div>
-            <div className={styles.pendingTxt}>Pending Updates</div>
-            <div className={styles.pendingSub}>Modules waiting</div>
-          </div>
-          <div className={`${styles.card} ${styles.centerCard}`}>
-            <div className={styles.storageNum}>2.4 TB</div>
-            <div className={styles.storageTxt}>Storage Utilized</div>
-          </div>
-        </div>
-      </div>
-
-      {!dismissed && (
-        <div className={styles.notifBar}>
-          <div>
-            <div className={styles.notifLabel}>SYSTEM NOTIFICATION</div>
-            <strong>Scheduled Maintenance Window</strong>
-            <span className={styles.notifDetail}> — Sun 12th Aug at 23:00 EAT (Duration: 3h)</span>
-          </div>
-          <button className={styles.dismissBtn} onClick={() => setDismissed(true)}>Dismiss</button>
-        </div>
-      )}
     </DashboardLayout>
   );
 }

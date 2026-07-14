@@ -2,15 +2,11 @@
 from pathlib import Path
 from decouple import config, Csv
 from datetime import timedelta
-import os 
-from dotenv import load_dotenv
-from urllib.parse import urlparse, parse_qsl
-
-load_dotenv()
+from config import get_db_config
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-SECRET_KEY = config("SECRET_KEY", default="change-me-in-production")
+SECRET_KEY = config("SECRET_KEY", default="django-insecure-change-this-to-a-proper-secret-key-in-production-2024")
 DEBUG = config("DEBUG", default=False, cast=bool)
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv())
 
@@ -72,18 +68,8 @@ TEMPLATES = [{
 
 WSGI_APPLICATION = "hrms_project.wsgi.application"
 
-tmpPostgres = urlparse(os.getenv("DATABASE_URL"))
-
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': tmpPostgres.path.replace('/', ''),
-        'USER': tmpPostgres.username,
-        'PASSWORD': tmpPostgres.password,
-        'HOST': tmpPostgres.hostname,
-        'PORT': 5432,
-        'OPTIONS': dict(parse_qsl(tmpPostgres.query)),
-    }
+    "default": get_db_config()
 }
 
 AUTH_PASSWORD_VALIDATORS = [

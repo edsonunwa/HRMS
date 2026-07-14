@@ -17,6 +17,9 @@
 .dangerBtn { color:var(--color-danger); border-color:var(--color-danger); }
 .dangerBtn:hover { background:#fff3f3; }
 
+.employeeName { color:var(--color-primary); cursor:pointer; text-decoration:none; transition:text-decoration 0.15s; }
+.employeeName:hover { text-decoration:underline; }
+
 .field { margin-bottom:var(--space-md); }
 .field label { display:block; font-size:var(--font-size-sm); font-weight:var(--font-weight-medium); color:var(--color-text); margin-bottom:4px; }
 .field input, .field select, .field textarea { width:100%; padding:0.55rem 0.7rem; border:1px solid var(--color-border); border-radius:var(--radius-sm); font-size:var(--font-size-sm); }

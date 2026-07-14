@@ -3,7 +3,10 @@ from django.db import models
 
 class ROLES:
     HR_OFFICER        = 'hr_officer'
+    HR_DIRECTOR       = 'hr_director'
     DEPARTMENT_HEAD   = 'department_head'
+    SENIOR_MANAGEMENT = 'senior_management'
+    BOARD             = 'board'
     EMPLOYEE          = 'employee'
     APPLICANT         = 'applicant'
     GRADUATE_TRAINEE  = 'graduate_trainee'
@@ -12,7 +15,10 @@ class ROLES:
 
 ROLE_CHOICES = [
     (ROLES.HR_OFFICER,        'HR Officer'),
+    (ROLES.HR_DIRECTOR,       'HR Director'),
     (ROLES.DEPARTMENT_HEAD,   'Department Head'),
+    (ROLES.SENIOR_MANAGEMENT, 'Senior Management'),
+    (ROLES.BOARD,             'Board of Directors'),
     (ROLES.EMPLOYEE,          'Employee'),
     (ROLES.APPLICANT,         'Job Applicant'),
     (ROLES.GRADUATE_TRAINEE,  'Graduate Trainee'),
@@ -73,3 +79,40 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def has_any_role(self, *roles):
         return self.role in roles
+
+    def get_employee_profile(self):
+        """Return the linked Employee profile or None (avoids RelatedObjectDoesNotExist)."""
+        return getattr(self, 'employee_profile', None)
+
+class AuditLog(models.Model):
+    """Tracks admin-level actions performed across the system."""
+
+    ACTION_CHOICES = [
+        ('CREATE', 'Create'),
+        ('UPDATE', 'Update'),
+        ('DELETE', 'Delete'),
+        ('LOGIN',  'Login'),
+        ('LOGOUT', 'Logout'),
+        ('OTHER',  'Other'),
+    ]
+
+    user        = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='audit_logs')
+    username    = models.CharField(max_length=50, blank=True, help_text="Snapshot of the actor's username")
+    action      = models.CharField(max_length=20, choices=ACTION_CHOICES)
+    resource    = models.CharField(max_length=100, help_text='e.g. Employee, LeaveRequest, User')
+    resource_id = models.IntegerField(null=True, blank=True)
+    detail      = models.TextField(blank=True, help_text='Human-readable summary of what happened')
+    metadata    = models.JSONField(default=dict, blank=True,
+                                   help_text='Extra structured data (changed fields, IP, etc.)')
+    ip_address  = models.GenericIPAddressField(null=True, blank=True)
+    created_at  = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = 'auth_audit_logs'
+        ordering = ['-created_at']
+        verbose_name = 'Audit Log'
+        verbose_name_plural = 'Audit Logs'
+
+    def __str__(self):
+        return f'{self.username or "system"} {self.action} {self.resource} at {self.created_at:%Y-%m-%d %H:%M}'    
