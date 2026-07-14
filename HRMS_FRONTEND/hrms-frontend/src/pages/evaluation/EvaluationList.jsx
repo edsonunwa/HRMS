@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import EvaluationDashboard from '../../components/evaluation/EvaluationDashboard';
 import { FiPlus, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import DataTable from '../../components/common/DataTable';
@@ -388,11 +389,17 @@ function JobEvaluationsTab() {
   );
 }
 
+/* ---------- Dashboard tab ---------- */
+
+function DashboardTab() {
+  return <EvaluationDashboard />;
+}
+
 /* ---------- Page shell ---------- */
 
 export default function EvaluationList() {
   const { user } = useAuth();
-  const [tab, setTab] = useState('reviews');
+  const [tab, setTab] = useState('dashboard');
   const canManageCycles = IS_HR_OR_ADMIN.includes(user?.role);
   const canManageReviews = IS_DEPARTMENT_HEAD_OR_ABOVE.includes(user?.role);
   const canManageJobEval = IS_HR_OR_ADMIN.includes(user?.role);
@@ -407,6 +414,7 @@ export default function EvaluationList() {
       </div>
 
       <div className={styles.tabs}>
+        <button className={`${styles.tab} ${tab === 'dashboard' ? styles.tabActive : ''}`} onClick={() => setTab('dashboard')}>Dashboard</button>
         <button className={`${styles.tab} ${tab === 'reviews' ? styles.tabActive : ''}`} onClick={() => setTab('reviews')}>Reviews</button>
         <button className={`${styles.tab} ${tab === 'kpis' ? styles.tabActive : ''}`} onClick={() => setTab('kpis')}>KPIs</button>
         {canManageCycles && (
@@ -417,6 +425,7 @@ export default function EvaluationList() {
         )}
       </div>
 
+      {tab === 'dashboard' && <DashboardTab />}
       {tab === 'reviews' && <ReviewsTab canWrite={canManageReviews} />}
       {tab === 'kpis' && <KPIsTab />}
       {tab === 'cycles' && canManageCycles && <CyclesTab canWrite={canManageCycles} />}

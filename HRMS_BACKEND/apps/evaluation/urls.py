@@ -5,6 +5,7 @@ from .views import (
     ReviewListCreateView, ReviewDetailView,
     JobEvaluationListCreateView, JobEvaluationDetailView,
 )
+from .dashboard import EvaluationDashboardAPIView
 
 urlpatterns = [
     path("cycles/",             CycleListCreateView.as_view(),         name="cycle_list"),
@@ -15,4 +16,5 @@ urlpatterns = [
     path("reviews/<int:pk>/",   ReviewDetailView.as_view(),            name="review_detail"),
     path("job-evaluations/",    JobEvaluationListCreateView.as_view(), name="job_eval_list"),
     path("job-evaluations/<int:pk>/", JobEvaluationDetailView.as_view(), name="job_eval_detail"),
+    path("dashboard/",          EvaluationDashboardAPIView.as_view(),  name="eval_dashboard"),
 ]

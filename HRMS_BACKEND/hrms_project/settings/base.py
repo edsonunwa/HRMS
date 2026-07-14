@@ -6,7 +6,8 @@ from config import get_db_config
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-SECRET_KEY = config("SECRET_KEY", default="django-insecure-change-this-to-a-proper-secret-key-in-production-2024")
+# Generate with: python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+SECRET_KEY = config("SECRET_KEY", default="django-insecure-development-key-minimum-32-bytes-required-for-jwt-hs256-algorithm-safe")
 DEBUG = config("DEBUG", default=False, cast=bool)
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv())
 
