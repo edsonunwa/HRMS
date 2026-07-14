@@ -6,23 +6,13 @@ import { authService } from '../../services/authService';
 import { ROLES } from '../../utils/constants';
 import styles from './Login.module.css';
 
-const DEMO_USERS = [
-  { role: ROLES.ADMIN,            username: 'admin',       first_name: 'Dativah .',    last_name: '',         role_display: 'System Administrator'   },
-  { role: ROLES.HR_DIRECTOR,      username: 'hr_director', first_name: 'Director',    last_name: 'HR',       role_display: 'HR Director'             },
-  { role: ROLES.HR_OFFICER,       username: 'hr_officer',  first_name: 'Moriison',       last_name: 'Senior dev', role_display: 'Senior HR Officer'       },
-  { role: ROLES.DEPARTMENT_HEAD,  username: 'dept_head',   first_name: 'Mark',      last_name: 'BPO', role_display: 'Regional Operations Mgr' },
-  { role: ROLES.SENIOR_MANAGEMENT,username: 'senior_mgmt', first_name: 'uncle bob',        last_name: 'kachere',role_display: 'Managing Director'      },
-  { role: ROLES.BOARD,            username: 'board',       first_name: 'Board',       last_name: 'Member',   role_display: 'Board of Directors'      },
-  { role: ROLES.EMPLOYEE,         username: 'employee',    first_name: 'Alex',        last_name: 'Mwanje',   role_display: 'Principal Engineer'      },
-  
-];
+
 
 const ROLE_OPTIONS = [
   { value: ROLES.HR_OFFICER,       label: 'HR Officer' },
-  { value: ROLES.HR_DIRECTOR,      label: 'HR Director' },
+ 
   { value: ROLES.DEPARTMENT_HEAD,  label: 'Department Head' },
-  { value: ROLES.SENIOR_MANAGEMENT,label: 'Senior Management' },
-  { value: ROLES.BOARD,            label: 'Board of Directors' },
+  
   { value: ROLES.EMPLOYEE,         label: 'Employee' },
   
   { value: ROLES.ADMIN,            label: 'System Administrator' },
