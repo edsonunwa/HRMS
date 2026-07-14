@@ -7,13 +7,14 @@ from django_filters.rest_framework import DjangoFilterBackend
 from .models import Transfer
 from .serializers import TransferSerializer
 from apps.authentication.permissions import IsHROrAdmin, IsDepartmentHeadOrAbove
+from apps.authentication.permissions import CanCreateTransfer
 
 
 class TransferListCreateView(generics.ListCreateAPIView):
     serializer_class   = TransferSerializer
-    permission_classes = [IsDepartmentHeadOrAbove]
+    permission_classes = [CanCreateTransfer]
     filter_backends    = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields   = ["status", "transfer_type", "from_department", "to_department"]
+    filterset_fields   = ["status", "transfer_type", "from_department", "to_department", "is_hr_record"]
     search_fields      = ["employee__employee_id", "employee__user__first_name"]
 
     def get_queryset(self):
@@ -64,4 +65,35 @@ class ApproveTransferView(APIView):
                 emp.position = transfer.to_position
             emp.save()
 
-        return Response({"detail": f"Transfer {decision}."})
+        return Response(TransferSerializer(transfer, context={"request": request}).data)
+
+
+class CancelTransferView(APIView):
+    """
+    POST /api/transfers/<pk>/cancel/
+    Employee may cancel their own request only while it is still pending.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            transfer = Transfer.objects.get(pk=pk)
+        except Transfer.DoesNotExist:
+            return Response({"detail": "Not found."}, status=404)
+
+        profile = request.user.get_employee_profile()
+        if profile is None or transfer.employee_id != profile.id:
+            return Response(
+                {"detail": "You can only cancel your own transfer requests."},
+                status=403,
+            )
+
+        if transfer.status != "pending":
+            return Response(
+                {"detail": "This request can no longer be cancelled."},
+                status=400,
+            )
+
+        transfer.status = "cancelled"
+        transfer.save(update_fields=["status", "updated_at"])
+        return Response(TransferSerializer(transfer, context={"request": request}).data)

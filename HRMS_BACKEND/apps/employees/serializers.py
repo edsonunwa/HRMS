@@ -1,7 +1,8 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-from .models import Department, Grade, Position, Employee
+from .models import Branch,Department, Grade, Position, Employee
 from apps.authentication.serializers import UserSerializer
+
 
 User = get_user_model()
 
@@ -73,3 +74,9 @@ class EmployeeDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Employee
         fields = '__all__'
+        
+        
+class BranchSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Branch
+        fields = "__all__"        
