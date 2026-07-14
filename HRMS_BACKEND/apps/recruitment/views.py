@@ -10,9 +10,10 @@ from .serializers import (
     InterviewSerializer, JobOfferSerializer,
 )
 from apps.authentication.permissions import IsHROrAdmin, IsDepartmentHeadOrAbove
+from apps.authentication.audit import AuditLogMixin, log_audit_event
 
 
-class JobPostingListCreateView(generics.ListCreateAPIView):
+class JobPostingListCreateView(AuditLogMixin, generics.ListCreateAPIView):
     serializer_class = JobPostingSerializer
     filter_backends  = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'department', 'job_type']
@@ -31,13 +32,13 @@ class JobPostingListCreateView(generics.ListCreateAPIView):
         return qs
 
 
-class JobPostingDetailView(generics.RetrieveUpdateDestroyAPIView):
+class JobPostingDetailView(AuditLogMixin, generics.RetrieveUpdateDestroyAPIView):
     queryset           = JobPosting.objects.all()
     serializer_class   = JobPostingSerializer
     permission_classes = [IsHROrAdmin]
 
 
-class ApplicationListCreateView(generics.ListCreateAPIView):
+class ApplicationListCreateView(AuditLogMixin, generics.ListCreateAPIView):
     serializer_class   = JobApplicationSerializer
     permission_classes = [IsAuthenticated]
     filter_backends    = [DjangoFilterBackend, filters.SearchFilter]
@@ -50,7 +51,7 @@ class ApplicationListCreateView(generics.ListCreateAPIView):
         return JobApplication.objects.filter(applicant=user)
 
 
-class ApplicationDetailView(generics.RetrieveUpdateAPIView):
+class ApplicationDetailView(AuditLogMixin, generics.RetrieveUpdateAPIView):
     serializer_class   = JobApplicationSerializer
     permission_classes = [IsAuthenticated]
 
@@ -76,10 +77,19 @@ class UpdateApplicationStatusView(APIView):
         if request.data.get('rejection_reason'):
             app.rejection_reason = request.data['rejection_reason']
         app.save()
+        log_audit_event(
+            action='UPDATE',
+            resource='JobApplication',
+            request=request,
+            user=request.user,
+            instance=app,
+            detail=f'Updated application #{app.pk} to {new_status}',
+            metadata={'status': new_status},
+        )
         return Response(JobApplicationSerializer(app).data)
 
 
-class InterviewListCreateView(generics.ListCreateAPIView):
+class InterviewListCreateView(AuditLogMixin, generics.ListCreateAPIView):
     queryset           = Interview.objects.select_related('application').all()
     serializer_class   = InterviewSerializer
     permission_classes = [IsDepartmentHeadOrAbove]
@@ -87,19 +97,19 @@ class InterviewListCreateView(generics.ListCreateAPIView):
     filterset_fields   = ['outcome', 'interview_type']
 
 
-class InterviewDetailView(generics.RetrieveUpdateDestroyAPIView):
+class InterviewDetailView(AuditLogMixin, generics.RetrieveUpdateDestroyAPIView):
     queryset           = Interview.objects.all()
     serializer_class   = InterviewSerializer
     permission_classes = [IsDepartmentHeadOrAbove]
 
 
-class JobOfferListCreateView(generics.ListCreateAPIView):
+class JobOfferListCreateView(AuditLogMixin, generics.ListCreateAPIView):
     queryset           = JobOffer.objects.all()
     serializer_class   = JobOfferSerializer
     permission_classes = [IsHROrAdmin]
 
 
-class JobOfferDetailView(generics.RetrieveUpdateAPIView):
+class JobOfferDetailView(AuditLogMixin, generics.RetrieveUpdateAPIView):
     queryset           = JobOffer.objects.all()
     serializer_class   = JobOfferSerializer
     permission_classes = [IsAuthenticated]

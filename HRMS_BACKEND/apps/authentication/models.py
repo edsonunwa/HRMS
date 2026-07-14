@@ -83,3 +83,36 @@ class User(AbstractBaseUser, PermissionsMixin):
     def get_employee_profile(self):
         """Return the linked Employee profile or None (avoids RelatedObjectDoesNotExist)."""
         return getattr(self, 'employee_profile', None)
+
+class AuditLog(models.Model):
+    """Tracks admin-level actions performed across the system."""
+
+    ACTION_CHOICES = [
+        ('CREATE', 'Create'),
+        ('UPDATE', 'Update'),
+        ('DELETE', 'Delete'),
+        ('LOGIN',  'Login'),
+        ('LOGOUT', 'Logout'),
+        ('OTHER',  'Other'),
+    ]
+
+    user        = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='audit_logs')
+    username    = models.CharField(max_length=50, blank=True, help_text="Snapshot of the actor's username")
+    action      = models.CharField(max_length=20, choices=ACTION_CHOICES)
+    resource    = models.CharField(max_length=100, help_text='e.g. Employee, LeaveRequest, User')
+    resource_id = models.IntegerField(null=True, blank=True)
+    detail      = models.TextField(blank=True, help_text='Human-readable summary of what happened')
+    metadata    = models.JSONField(default=dict, blank=True,
+                                   help_text='Extra structured data (changed fields, IP, etc.)')
+    ip_address  = models.GenericIPAddressField(null=True, blank=True)
+    created_at  = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = 'auth_audit_logs'
+        ordering = ['-created_at']
+        verbose_name = 'Audit Log'
+        verbose_name_plural = 'Audit Logs'
+
+    def __str__(self):
+        return f'{self.username or "system"} {self.action} {self.resource} at {self.created_at:%Y-%m-%d %H:%M}'    

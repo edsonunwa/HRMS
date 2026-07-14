@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import get_user_model
+from .models import AuditLog
+from .audit import log_audit_event
 
 User = get_user_model()
 
@@ -11,6 +13,15 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
         user = self.user
+        request = self.context.get('request')
+        log_audit_event(
+            action='LOGIN',
+            resource='UserSession',
+            request=request,
+            user=user,
+            instance=user,
+            detail=f'User {user.username} logged in',
+        )
         data['user'] = {
             'id':           user.id,
             'username':     user.username,
@@ -76,4 +87,20 @@ class ChangePasswordSerializer(serializers.Serializer):
         user.set_password(self.validated_data['new_password'])
         user.must_change_password = False
         user.save()
+        log_audit_event(
+            action='UPDATE',
+            resource='UserPassword',
+            request=self.context.get('request'),
+            user=user,
+            instance=user,
+            detail=f'User {user.username} changed password',
+        )
         return user
+    
+
+class AuditLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = AuditLog
+        fields = '__all__'
+        read_only_fields = ['id', 'created_at']
+    

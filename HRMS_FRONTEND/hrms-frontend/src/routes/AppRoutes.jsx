@@ -23,6 +23,7 @@ const AdminDashboard          = lazy(() => import('../pages/dashboard/AdminDashb
 
 // Feature modules
 const EmployeeList    = lazy(() => import('../pages/employees/EmployeeList'));
+const EmployeeDetail  = lazy(() => import('../pages/employees/EmployeeDetail'));
 const ManpowerList    = lazy(() => import('../pages/manpower/ManpowerList'));
 const RecruitmentList = lazy(() => import('../pages/recruitment/RecruitmentList'));
 const LeaveList       = lazy(() => import('../pages/leave/LeaveList'));
@@ -31,7 +32,9 @@ const TransferList    = lazy(() => import('../pages/transfers/TransferList'));
 const EvaluationList  = lazy(() => import('../pages/evaluation/EvaluationList'));
 const TraineeList     = lazy(() => import('../pages/trainees/TraineeList'));
 const ReportsOverview = lazy(() => import('../pages/reports/ReportsOverview'));
+const Notifications   = lazy(() => import('../pages/notifications/Notifications'));
 const UserManagement  = lazy(() => import('../pages/settings/UserManagement'));
+const SystemLogs      = lazy(() => import('../pages/logs/SystemLogs'));
 
 function Loading() {
   return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>;
@@ -120,6 +123,9 @@ function AppRoutes() {
         <Route path="/workforce" element={
           <ProtectedRoute><EmployeeList /></ProtectedRoute>
         } />
+        <Route path="/workforce/:id" element={
+          <ProtectedRoute><EmployeeDetail /></ProtectedRoute>
+        } />
         <Route path="/manpower" element={
           <ProtectedRoute><ManpowerList /></ProtectedRoute>
         } />
@@ -144,9 +150,17 @@ function AppRoutes() {
         <Route path="/reports" element={
           <ProtectedRoute><ReportsOverview /></ProtectedRoute>
         } />
+        <Route path="/notifications" element={
+          <ProtectedRoute><Notifications /></ProtectedRoute>
+        } />
         <Route path="/settings" element={
           <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
             <UserManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/audit-logs" element={
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+            <SystemLogs />
           </ProtectedRoute>
         } />
 

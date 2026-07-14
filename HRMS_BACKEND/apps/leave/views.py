@@ -11,7 +11,9 @@ from .serializers import (
     LeaveRequestSerializer, LeaveApprovalSerializer,
 )
 from apps.authentication.permissions import IsHROrAdmin, IsDepartmentHeadOrAbove
-from apps.authentication.models import ROLES
+from apps.authentication.models import ROLES, User
+from apps.authentication.audit import AuditLogMixin, log_audit_event
+from apps.notifications.models import Notification
 
 # ---------------------------------------------------------------------------
 # Approval chain
@@ -23,6 +25,30 @@ from apps.authentication.models import ROLES
 # ---------------------------------------------------------------------------
 
 FINAL_LEVEL = 4
+
+
+def _create_notification(recipient, title, message, notif_type='info', category='leave', link=''):
+    """Helper function to create notifications."""
+    try:
+        # Validate recipient is a User instance
+        if not recipient or not isinstance(recipient, User):
+            print(f"Invalid recipient for notification: {recipient}")
+            return
+        
+        Notification.objects.create(
+            recipient=recipient,
+            title=title,
+            message=message,
+            notif_type=notif_type,
+            category=category,
+            link=link
+        )
+        print(f"Notification created successfully for {recipient.username}: {title}")
+    except Exception as e:
+        # Log error but don't break the main flow
+        print(f"Failed to create notification: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 def _dept_senior_managers(department):
@@ -44,8 +70,15 @@ def _get_approver_level(approver, leave):
     """
     Return the level this approver is entitled to act on for this leave request,
     or None if they have no standing in the chain.
+    
+    Note: Department Heads and Senior Managers CANNOT approve their own requests.
+    Their requests automatically skip their level and go to the level above.
     """
     employee = leave.employee
+
+    # Prevent Department Heads and Senior Managers from approving their own requests
+    if employee.user == approver and employee.user.role in (ROLES.DEPARTMENT_HEAD, ROLES.SENIOR_MANAGEMENT):
+        return None
 
     # Level 1 — direct supervisor
     supervisor_profile = employee.supervisor
@@ -90,7 +123,7 @@ def _next_required_level(leave):
 # Views
 # ---------------------------------------------------------------------------
 
-class LeaveTypeListCreateView(generics.ListCreateAPIView):
+class LeaveTypeListCreateView(AuditLogMixin, generics.ListCreateAPIView):
     queryset           = LeaveType.objects.all()
     serializer_class   = LeaveTypeSerializer
     permission_classes = [IsAuthenticated]
@@ -101,7 +134,7 @@ class LeaveTypeListCreateView(generics.ListCreateAPIView):
         return [IsAuthenticated()]
 
 
-class LeaveTypeDetailView(generics.RetrieveUpdateDestroyAPIView):
+class LeaveTypeDetailView(AuditLogMixin, generics.RetrieveUpdateDestroyAPIView):
     queryset           = LeaveType.objects.all()
     serializer_class   = LeaveTypeSerializer
     permission_classes = [IsHROrAdmin]
@@ -121,7 +154,7 @@ class LeaveBalanceListView(generics.ListAPIView):
         return LeaveBalance.objects.filter(employee=user.get_employee_profile())
 
 
-class LeaveRequestListCreateView(generics.ListCreateAPIView):
+class LeaveRequestListCreateView(AuditLogMixin, generics.ListCreateAPIView):
     serializer_class   = LeaveRequestSerializer
     permission_classes = [IsAuthenticated]
     filter_backends    = [DjangoFilterBackend, filters.OrderingFilter]
@@ -150,8 +183,63 @@ class LeaveRequestListCreateView(generics.ListCreateAPIView):
         subordinate = LeaveRequest.objects.filter(employee__supervisor=profile)
         return (own | subordinate).distinct()
 
+    def perform_create(self, serializer):
+        """Prevent employees from creating leave requests if they have a pending one."""
+        user = self.request.user
+        # Only enforce this for regular employees, not HR/Admin/Management
+        if user.role not in (ROLES.HR_OFFICER, ROLES.HR_DIRECTOR, ROLES.ADMIN,
+                             ROLES.DEPARTMENT_HEAD, ROLES.SENIOR_MANAGEMENT, ROLES.BOARD):
+            profile = user.get_employee_profile()
+            if profile:
+                has_pending = LeaveRequest.objects.filter(
+                    employee=profile,
+                    status='pending'
+                ).exists()
+                if has_pending:
+                    from rest_framework.exceptions import ValidationError
+                    raise ValidationError(
+                        'You already have a pending leave request. Please wait for it to be processed before submitting a new one.'
+                    )
+        
+        # Save the instance first
+        instance = serializer.save()
+        
+        # Department Heads and Senior Managers cannot approve their own requests,
+        # so their requests should start at the level above them
+        profile = user.get_employee_profile()
+        if profile and instance.employee_id == profile.id:
+            if user.role == ROLES.DEPARTMENT_HEAD:
+                # Department Head's request skips Level 2 and starts at Level 3
+                instance.current_level = 3
+                instance.save(update_fields=['current_level'])
+            elif user.role == ROLES.SENIOR_MANAGEMENT:
+                # Senior Manager's request skips Level 3 and starts at Level 4 (HR)
+                instance.current_level = 4
+                instance.save(update_fields=['current_level'])
+        
+        # Send notification to the first approver in the chain
+        next_level = _next_required_level(instance)
+        if next_level == 1 and instance.employee.supervisor:
+            _create_notification(
+                recipient=instance.employee.supervisor.user,
+                title='New Leave Request',
+                message=f'{instance.employee.full_name} has requested {instance.leave_type.name} leave from {instance.start_date} to {instance.end_date}.',
+                notif_type='info',
+                category='leave',
+                link=f'/leave/{instance.id}'
+            )
+        elif next_level == 2 and instance.employee.department.head:
+            _create_notification(
+                recipient=instance.employee.department.head,
+                title='New Leave Request',
+                message=f'{instance.employee.full_name} has requested {instance.leave_type.name} leave from {instance.start_date} to {instance.end_date}.',
+                notif_type='info',
+                category='leave',
+                link=f'/leave/{instance.id}'
+            )
 
-class LeaveRequestDetailView(generics.RetrieveUpdateDestroyAPIView):
+
+class LeaveRequestDetailView(AuditLogMixin, generics.RetrieveUpdateDestroyAPIView):
     serializer_class   = LeaveRequestSerializer
     permission_classes = [IsAuthenticated]
 
@@ -208,16 +296,15 @@ class ApproveLeaveView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Self-approval guard
-        if leave.employee.user == request.user:
-            return Response(
-                {'detail': 'You cannot approve your own leave request.'},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
         # Determine what level this approver maps to
         approver_level = _get_approver_level(request.user, leave)
         if approver_level is None:
+            # Check if this is a self-approval attempt by Department Head or Senior Manager
+            if leave.employee.user == request.user and request.user.role in (ROLES.DEPARTMENT_HEAD, ROLES.SENIOR_MANAGEMENT):
+                return Response(
+                    {'detail': 'Department Heads and Senior Managers cannot approve their own leave requests. Your request has been routed to the next level above you.'},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
             return Response(
                 {'detail': 'You are not in the approval chain for this request.'},
                 status=status.HTTP_403_FORBIDDEN,
@@ -270,6 +357,26 @@ class ApproveLeaveView(APIView):
         if decision == 'rejected':
             leave.status = 'rejected'
             leave.save(update_fields=['status', 'updated_at'])
+            
+            # Notify the employee
+            _create_notification(
+                recipient=leave.employee.user,
+                title='Leave Request Rejected',
+                message=f'Your {leave.leave_type.name} leave request from {leave.start_date} to {leave.end_date} has been rejected.',
+                notif_type='danger',
+                category='leave',
+                link=f'/leave/{leave.id}'
+            )
+            
+            log_audit_event(
+                action='UPDATE',
+                resource='LeaveRequest',
+                request=request,
+                user=request.user,
+                instance=leave,
+                detail=f'Leave request #{leave.pk} rejected at level {acting_level}',
+                metadata={'decision': decision, 'acting_level': acting_level},
+            )
             return Response({'detail': 'Leave request rejected.'})
 
         # Approval — check if this is the final level
@@ -294,6 +401,26 @@ class ApproveLeaveView(APIView):
             )
             leave.status = 'approved'
             leave.save(update_fields=['status', 'updated_at'])
+            
+            # Notify the employee
+            _create_notification(
+                recipient=leave.employee.user,
+                title='Leave Request Approved',
+                message=f'Your {leave.leave_type.name} leave request from {leave.start_date} to {leave.end_date} has been approved.',
+                notif_type='success',
+                category='leave',
+                link=f'/leave/{leave.id}'
+            )
+            
+            log_audit_event(
+                action='UPDATE',
+                resource='LeaveRequest',
+                request=request,
+                user=request.user,
+                instance=leave,
+                detail=f'Leave request #{leave.pk} approved at final level',
+                metadata={'decision': decision, 'acting_level': acting_level},
+            )
             return Response({'detail': 'Leave request approved.'})
 
         # Not the final level — advance to the next required level
@@ -302,6 +429,48 @@ class ApproveLeaveView(APIView):
         next_level = _next_required_level(leave)
         leave.current_level = next_level
         leave.save(update_fields=['current_level', 'updated_at'])
+        
+        # Notify the next approver
+        if next_level == 1 and leave.employee.supervisor:
+            _create_notification(
+                recipient=leave.employee.supervisor.user,
+                title='Leave Request Pending Your Approval',
+                message=f'{leave.employee.full_name}\'s {leave.leave_type.name} leave request is awaiting your approval.',
+                notif_type='warning',
+                category='leave',
+                link=f'/leave/{leave.id}'
+            )
+        elif next_level == 2 and leave.employee.department.head:
+            _create_notification(
+                recipient=leave.employee.department.head,
+                title='Leave Request Pending Your Approval',
+                message=f'{leave.employee.full_name}\'s {leave.leave_type.name} leave request is awaiting your approval.',
+                notif_type='warning',
+                category='leave',
+                link=f'/leave/{leave.id}'
+            )
+        elif next_level == 3:
+            # Notify all senior managers in the department
+            senior_mgrs = _dept_senior_managers(leave.employee.department)
+            for mgr in senior_mgrs:
+                _create_notification(
+                    recipient=mgr,
+                    title='Leave Request Pending Your Approval',
+                    message=f'{leave.employee.full_name}\'s {leave.leave_type.name} leave request is awaiting your approval.',
+                    notif_type='warning',
+                    category='leave',
+                    link=f'/leave/{leave.id}'
+                )
+        
+        log_audit_event(
+            action='UPDATE',
+            resource='LeaveRequest',
+            request=request,
+            user=request.user,
+            instance=leave,
+            detail=f'Leave request #{leave.pk} approved at level {acting_level}',
+            metadata={'decision': decision, 'acting_level': acting_level, 'next_level': next_level},
+        )
         return Response({'detail': f'Level-{acting_level} approval recorded. Awaiting level-{next_level} approval.'})
 
 
@@ -309,8 +478,8 @@ class CancelLeaveView(APIView):
     """
     POST /api/leave/requests/<pk>/cancel/
 
-    - Employee (owner): can recall an approved request only if leave hasn't started yet.
-    - HR/Admin: can cancel any pending request, or recall any approved request.
+    - Employee (owner): can cancel their own pending request.
+    - HR Director / HR Officer / Admin: can cancel any pending request, or recall any approved request.
     """
     permission_classes = [IsAuthenticated]
 
@@ -323,16 +492,8 @@ class CancelLeaveView(APIView):
         is_owner = leave.employee.user == request.user
         is_hr    = request.user.role in (ROLES.HR_OFFICER, ROLES.HR_DIRECTOR, ROLES.ADMIN)
 
-        if not (is_owner or is_hr):
-            return Response(
-                {'detail': 'You do not have permission to perform this action.'},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        from django.utils import timezone
-        today = timezone.now().date()
-
         if leave.status == 'pending':
+            # For pending requests: owner or HR can cancel
             if not (is_owner or is_hr):
                 return Response(
                     {'detail': 'You do not have permission to cancel this request.'},
@@ -340,13 +501,22 @@ class CancelLeaveView(APIView):
                 )
             leave.status = 'cancelled'
             leave.save(update_fields=['status', 'updated_at'])
+            log_audit_event(
+                action='UPDATE',
+                resource='LeaveRequest',
+                request=request,
+                user=request.user,
+                instance=leave,
+                detail=f'Leave request #{leave.pk} cancelled',
+            )
             return Response({'detail': 'Leave request cancelled.'})
 
         if leave.status == 'approved':
-            if not is_hr and leave.start_date <= today:
+            # For approved requests: ONLY HR Director, HR Officer, or Admin can recall
+            if not is_hr:
                 return Response(
-                    {'detail': 'Leave has already started and cannot be recalled. Contact HR.'},
-                    status=status.HTTP_400_BAD_REQUEST,
+                    {'detail': 'Only HR Director or HR Officer can recall an approved leave request.'},
+                    status=status.HTTP_403_FORBIDDEN,
                 )
             LeaveBalance.objects.filter(
                 employee=leave.employee,
@@ -355,6 +525,14 @@ class CancelLeaveView(APIView):
             ).update(used_days=F('used_days') - leave.days_requested)
             leave.status = 'recalled'
             leave.save(update_fields=['status', 'updated_at'])
+            log_audit_event(
+                action='UPDATE',
+                resource='LeaveRequest',
+                request=request,
+                user=request.user,
+                instance=leave,
+                detail=f'Leave request #{leave.pk} recalled',
+            )
             return Response({'detail': 'Leave request recalled and balance restored.'})
 
         return Response(

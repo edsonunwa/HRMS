@@ -8,9 +8,10 @@ from .models import Transfer
 from .serializers import TransferSerializer
 from apps.authentication.permissions import IsHROrAdmin, IsDepartmentHeadOrAbove
 from apps.authentication.permissions import CanCreateTransfer
+from apps.authentication.audit import AuditLogMixin, log_audit_event
 
 
-class TransferListCreateView(generics.ListCreateAPIView):
+class TransferListCreateView(AuditLogMixin, generics.ListCreateAPIView):
     serializer_class   = TransferSerializer
     permission_classes = [CanCreateTransfer]
     filter_backends    = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -33,7 +34,7 @@ class TransferListCreateView(generics.ListCreateAPIView):
         return Transfer.objects.filter(employee=profile)
 
 
-class TransferDetailView(generics.RetrieveUpdateDestroyAPIView):
+class TransferDetailView(AuditLogMixin, generics.RetrieveUpdateDestroyAPIView):
     queryset           = Transfer.objects.all()
     serializer_class   = TransferSerializer
     permission_classes = [IsDepartmentHeadOrAbove]
@@ -64,6 +65,16 @@ class ApproveTransferView(APIView):
             if transfer.to_position:
                 emp.position = transfer.to_position
             emp.save()
+
+        log_audit_event(
+            action='UPDATE',
+            resource='Transfer',
+            request=request,
+            user=request.user,
+            instance=transfer,
+            detail=f'Transfer #{transfer.pk} {decision}',
+            metadata={'decision': decision},
+        )
 
         return Response(TransferSerializer(transfer, context={"request": request}).data)
 
