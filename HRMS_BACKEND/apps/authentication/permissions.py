@@ -28,6 +28,48 @@ class IsDepartmentHeadOrAbove(BasePermission):
             ROLES.ADMIN, ROLES.HR_OFFICER, ROLES.HR_DIRECTOR,
             ROLES.DEPARTMENT_HEAD, ROLES.SENIOR_MANAGEMENT, ROLES.BOARD
         )
+        
+        
+class CanCreateTransfer(BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role in (
+            ROLES.ADMIN,ROLES.HR_OFFICER,ROLES.HR_DIRECTOR,ROLES.EMPLOYEE,
+        )       
+        
+        
+        
+class CanViewOrganisationData(BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role in (
+            ROLES.ADMIN,
+            ROLES.HR_OFFICER,
+            ROLES.HR_DIRECTOR,
+            ROLES.DEPARTMENT_HEAD,
+            ROLES.SENIOR_MANAGEMENT,
+            ROLES.BOARD,
+            ROLES.EMPLOYEE,
+        )        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
 
 
 class IsOwnerOrHR(BasePermission):

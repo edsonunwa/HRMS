@@ -9,6 +9,11 @@ const api = axios.create({
 // Attach access token to every request
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem(TOKEN_KEY);
+
+  
+  console.log("TOKEN:", token);
+
+
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
