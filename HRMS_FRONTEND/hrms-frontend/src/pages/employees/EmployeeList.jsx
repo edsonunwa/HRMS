@@ -9,8 +9,7 @@ import EmployeePicker from '../../components/common/EmployeePicker';
 import { useApiResource } from '../../hooks/useApiResource';
 import { useSearch } from '../../hooks/useSearch';
 import { useAuth } from '../../context/AuthContext';
-import { employeesService, departmentsService, gradesService, positionsService } from '../../services/employeesService';
-import { userService } from '../../services/userService';
+import { employeesService, departmentsService, gradesService, positionsService, branchesService } from '../../services/employeesService';
 import { IS_HR_OR_ADMIN, IS_DEPARTMENT_HEAD_OR_ABOVE } from '../../utils/constants';
 import styles from './EmployeeList.module.css';
 
@@ -137,26 +136,29 @@ function SimpleResourceTab({ service, fields, columns, searchKeys, canWrite }) {
 
 /* ---------- Employees tab ---------- */
 
-function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, positions, employeeOptions, userOptions }) {
+function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, positions, branches, employeeOptions }) {
   const [form, setForm] = useState(editing ? {
     ...editing,
-    department: editing.department?.id ?? editing.department,
-    position: editing.position?.id ?? editing.position,
-    grade: editing.grade?.id ?? editing.grade,
+    department_id: editing.department?.id ?? editing.department,
+    position_id: editing.position?.id ?? editing.position,
+    grade_id: editing.grade?.id ?? editing.grade,
     supervisor: editing.supervisor?.id ?? editing.supervisor,
   } : {
-    user: '', employee_id: '', department: '', position: '', grade: '', supervisor: '',
+    // User fields (required for employee creation)
+    first_name: '', last_name: '', email: '', phone: '',
+    // Employee fields
+    department_id: '', position_id: '', grade_id: '', supervisor: '',
     gender: 'M', date_of_birth: '', national_id: '', join_date: '',
     employment_status: 'active', contract_type: 'permanent', basic_salary: '',
     confirmation_date: '', termination_date: '',
     tin_number: '', nssf_number: '', nationality: 'Ugandan',
-    address: '', next_of_kin: '', next_of_kin_contact: '',
+    address: '', next_of_kin: '', next_of_kin_contact: '', branch: '',
   });
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   const filteredPositions = positions.filter(
-    (p) => !form.department || String(p.department?.id ?? p.department) === String(form.department)
+    (p) => !form.department_id || String(p.department?.id ?? p.department) === String(form.department_id)
   );
 
   function setField(key, value) {
@@ -164,7 +166,7 @@ function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, pos
   }
 
   function handleDepartmentChange(e) {
-    setForm((f) => ({ ...f, department: e.target.value, position: '' }));
+    setForm((f) => ({ ...f, department_id: e.target.value, position_id: '' }));
   }
 
   async function handleSubmit(e) {
@@ -173,11 +175,16 @@ function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, pos
     setError(null);
     try {
       const payload = {
-        employee_id: form.employee_id,
+        // User fields
+        first_name: form.first_name,
+        last_name: form.last_name,
+        email: form.email,
+        phone: form.phone || '',
+        // Employee fields
         gender: form.gender,
-        department_id: form.department,
-        position_id: form.position,
-        grade_id: form.grade || undefined,
+        department_id: form.department_id,
+        position_id: form.position_id,
+        grade_id: form.grade_id || undefined,
         join_date: form.join_date,
         date_of_birth: form.date_of_birth || undefined,
         confirmation_date: form.confirmation_date || undefined,
@@ -193,10 +200,16 @@ function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, pos
         address: form.address,
         next_of_kin: form.next_of_kin,
         next_of_kin_contact: form.next_of_kin_contact,
+        branch: form.branch || undefined,
       };
-      if (!editing) payload.user_id = form.user;
       if (editing) {
-        await employeesService.update(editing.id, payload);
+        // When editing, don't send user fields or branch
+        const updatePayload = { ...payload };
+        delete updatePayload.first_name;
+        delete updatePayload.last_name;
+        delete updatePayload.email;
+        delete updatePayload.phone;
+        await employeesService.update(editing.id, updatePayload);
       } else {
         await employeesService.create(payload);
       }
@@ -217,18 +230,40 @@ function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, pos
       error={error}
     >
       {!editing && (
-        <div className={styles.field}>
-          <label>Linked User Account</label>
-          <select value={form.user} onChange={(e) => setField('user', e.target.value)} required>
-            <option value="">Select a user…</option>
-            {userOptions.map((u) => <option key={u.id} value={u.id}>{u.username} ({u.email})</option>)}
-          </select>
+        <>
+          <div className={styles.sectionLabel}>Personal Information</div>
+          <div className={styles.row2}>
+            <div className={styles.field}>
+              <label>First Name *</label>
+              <input value={form.first_name} onChange={(e) => setField('first_name', e.target.value)} required />
+            </div>
+            <div className={styles.field}>
+              <label>Last Name *</label>
+              <input value={form.last_name} onChange={(e) => setField('last_name', e.target.value)} required />
+            </div>
+          </div>
+          <div className={styles.row2}>
+            <div className={styles.field}>
+              <label>Email *</label>
+              <input type="email" value={form.email} onChange={(e) => setField('email', e.target.value)} required />
+            </div>
+            <div className={styles.field}>
+              <label>Phone</label>
+              <input value={form.phone} onChange={(e) => setField('phone', e.target.value)} />
+            </div>
+          </div>
+        </>
+      )}
+      {editing && (
+        <div className={styles.info}>
+          Employee: <strong>{editing.employee_id}</strong> &mdash; {editing.full_name}
         </div>
       )}
+      <div className={styles.sectionLabel}>Employment Details</div>
       <div className={styles.row2}>
         <div className={styles.field}>
           <label>Employee ID</label>
-          <input value={form.employee_id} onChange={(e) => setField('employee_id', e.target.value)} required />
+          <input value={editing ? editing.employee_id : '(Auto-generated on save)'} disabled />
         </div>
         <div className={styles.field}>
           <label>Gender</label>
@@ -240,14 +275,14 @@ function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, pos
       <div className={styles.row2}>
         <div className={styles.field}>
           <label>Department</label>
-          <select value={form.department} onChange={handleDepartmentChange} required>
+          <select value={form.department_id} onChange={handleDepartmentChange} required>
             <option value="">—</option>
             {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
         </div>
         <div className={styles.field}>
           <label>Position</label>
-          <select value={form.position} onChange={(e) => setField('position', e.target.value)} required>
+          <select value={form.position_id} onChange={(e) => setField('position_id', e.target.value)} required>
             <option value="">—</option>
             {filteredPositions.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
           </select>
@@ -256,7 +291,7 @@ function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, pos
       <div className={styles.row2}>
         <div className={styles.field}>
           <label>Grade</label>
-          <select value={form.grade} onChange={(e) => setField('grade', e.target.value)} required>
+          <select value={form.grade_id} onChange={(e) => setField('grade_id', e.target.value)}>
             <option value="">—</option>
             {grades.map((g) => <option key={g.id} value={g.id}>{g.title}</option>)}
           </select>
@@ -266,6 +301,15 @@ function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, pos
           <EmployeePicker options={employeeOptions} value={form.supervisor} onChange={(id) => setField('supervisor', id)} />
         </div>
       </div>
+      {branches.length > 0 && (
+        <div className={styles.field}>
+          <label>Branch</label>
+          <select value={form.branch} onChange={(e) => setField('branch', e.target.value)}>
+            <option value="">—</option>
+            {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+        </div>
+      )}
       <div className={styles.row2}>
         <div className={styles.field}>
           <label>Join Date</label>
@@ -305,6 +349,7 @@ function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, pos
         </div>
       </div>
 
+      <div className={styles.sectionLabel}>Personal Details</div>
       <div className={styles.row2}>
         <div className={styles.field}>
           <label>National ID</label>
@@ -350,16 +395,10 @@ function EmployeesTab({ canWrite }) {
   const departmentsRes = useApiResource(departmentsService);
   const gradesRes = useApiResource(gradesService);
   const positionsRes = useApiResource(positionsService);
+  const branchesRes = useApiResource(branchesService);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [users, setUsers] = useState([]);
   const [loadingEdit, setLoadingEdit] = useState(false);
-
-  React.useEffect(() => {
-    if (modalOpen && !editing) {
-      userService.listWithoutProfile().then(setUsers).catch(() => setUsers([]));
-    }
-  }, [modalOpen, editing]);
 
   // List rows use the lightweight EmployeeListSerializer (full_name, department_name, position_title —
   // no ids), so the picker needs employee_id + full_name, not the detail-shaped nested objects.
@@ -431,8 +470,8 @@ function EmployeesTab({ canWrite }) {
           departments={departmentsRes.data}
           grades={gradesRes.data}
           positions={positionsRes.data}
+          branches={branchesRes.data}
           employeeOptions={employeeOptions}
-          userOptions={users}
         />
       )}
     </div>
@@ -464,9 +503,13 @@ function DepartmentsTab({ canWrite }) {
   const [form, setForm] = useState({ name: '', code: '', region: '', description: '', head: '' });
 
   React.useEffect(() => {
-    userService.list().then((users) => {
-      setDeptHeadUsers(users.filter((u) => u.role === 'department_head'));
-    }).catch(() => {});
+    try {
+      // Fetch users for department head selection — just admins and HR
+      const { userService } = require('../../services/userService');
+      userService.list().then((users) => {
+        setDeptHeadUsers(users.filter((u) => u.role === 'department_head'));
+      }).catch(() => {});
+    } catch (_) {}
   }, []);
 
   function setField(key, value) { setForm((f) => ({ ...f, [key]: value })); }
