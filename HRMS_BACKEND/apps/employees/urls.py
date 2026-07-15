@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import (
+from .views import (BranchListCreateView,
     DepartmentListCreateView, DepartmentDetailView,
     GradeListCreateView, GradeDetailView,
     PositionListCreateView, PositionDetailView,
@@ -16,4 +16,5 @@ urlpatterns = [
     path('grades/<int:pk>/',     GradeDetailView.as_view(),        name='grade_detail'),
     path('positions/',           PositionListCreateView.as_view(), name='pos_list'),
     path('positions/<int:pk>/',  PositionDetailView.as_view(),     name='pos_detail'),
+    path("branches/",            BranchListCreateView.as_view(),   name="branch-list"),
 ]

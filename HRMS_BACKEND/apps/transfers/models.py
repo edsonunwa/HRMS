@@ -9,6 +9,8 @@ class Transfer(models.Model):
 
     employee          = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name="transfers")
     transfer_type     = models.CharField(max_length=20, choices=TYPE, default="transfer")
+    from_branch = models.ForeignKey('employees.Branch', on_delete=models.SET_NULL, null=True, related_name='transfers_from')
+    to_branch   = models.ForeignKey('employees.Branch', on_delete=models.SET_NULL, null=True, related_name='transfers_to')
     from_department   = models.ForeignKey(Department, on_delete=models.PROTECT, related_name="outgoing_transfers")
     to_department     = models.ForeignKey(Department, on_delete=models.PROTECT, related_name="incoming_transfers")
     from_position     = models.ForeignKey(Position, null=True, blank=True, on_delete=models.SET_NULL, related_name="vacated_by")
@@ -20,6 +22,7 @@ class Transfer(models.Model):
     initiated_by      = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="initiated_transfers")
     approved_by       = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="approved_transfers")
     approval_comment  = models.TextField(blank=True)
+    is_hr_record      = models.BooleanField(default=False)  # True when HR/Admin recorded this directly, bypassing the request/approval workflow
     created_at        = models.DateTimeField(auto_now_add=True)
     updated_at        = models.DateTimeField(auto_now=True)
 

@@ -10,7 +10,7 @@ class Department(models.Model):
     head        = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='headed_department')
     region      = models.CharField(max_length=50, blank=True)
     created_at  = models.DateTimeField(auto_now_add=True)
-
+    branch = models.ForeignKey('Branch', on_delete=models.CASCADE, related_name='departments', null=True, blank=True)
     class Meta:
         db_table = 'departments'
         ordering = ['name']
@@ -49,7 +49,7 @@ class Position(models.Model):
 
 
 class Employee(models.Model):
-    GENDER_CHOICES = [('M','Male'), ('F','Female'), ('O','Other')]
+    GENDER_CHOICES = [('M','Male'), ('F','Female')]
     EMPLOYMENT_STATUS = [
         ('active',      'Active'),
         ('on_leave',    'On Leave'),
@@ -98,7 +98,7 @@ class Employee(models.Model):
 
     created_at      = models.DateTimeField(auto_now_add=True)
     updated_at      = models.DateTimeField(auto_now=True)
-
+    branch = models.ForeignKey('Branch', on_delete=models.PROTECT, related_name='employees', null=True, blank=True)
     class Meta:
         db_table = 'employees'
         ordering = ['employee_id']
@@ -109,3 +109,18 @@ class Employee(models.Model):
     @property
     def full_name(self):
         return self.user.full_name
+    
+    
+    
+class Branch(models.Model):
+    name       = models.CharField(max_length=100, unique=True)
+    code       = models.CharField(max_length=20, unique=True)
+    location   = models.CharField(max_length=100, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'branches'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name

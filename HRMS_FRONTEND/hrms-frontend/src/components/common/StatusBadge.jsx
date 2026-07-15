@@ -18,17 +18,19 @@ function colorFor(status) {
   return 'gray';
 }
 
-function StatusBadge({ status }) {
+function StatusBadge({ status, label }) {
   const color = colorFor(status);
+  const text = label || (status || '').replace(/_/g, ' ');
   return (
     <span className={`${styles.pill} ${styles[color]}`}>
-      {(status || '').replace(/_/g, ' ')}
+      {text}
     </span>
   );
 }
 
 StatusBadge.propTypes = {
   status: PropTypes.string,
+  label: PropTypes.string,
 };
 
 export default StatusBadge;
