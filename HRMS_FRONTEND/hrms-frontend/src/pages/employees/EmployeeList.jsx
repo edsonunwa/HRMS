@@ -249,7 +249,7 @@ function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, pos
             </div>
             <div className={styles.field}>
               <label>Phone</label>
-              <input value={form.phone} onChange={(e) => setField('phone', e.target.value)} />
+              <input value={form.phone} onChange={(e) => setField('phone', e.target.value)}required />
             </div>
           </div>
         </>
@@ -267,7 +267,7 @@ function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, pos
         </div>
         <div className={styles.field}>
           <label>Gender</label>
-          <select value={form.gender} onChange={(e) => setField('gender', e.target.value)}>
+          <select value={form.gender} onChange={(e) => setField('gender', e.target.value)}required>
             {GENDER_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>
@@ -291,7 +291,7 @@ function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, pos
       <div className={styles.row2}>
         <div className={styles.field}>
           <label>Grade</label>
-          <select value={form.grade_id} onChange={(e) => setField('grade_id', e.target.value)}>
+          <select value={form.grade_id} onChange={(e) => setField('grade_id', e.target.value)}required>
             <option value="">—</option>
             {grades.map((g) => <option key={g.id} value={g.id}>{g.title}</option>)}
           </select>
@@ -304,7 +304,7 @@ function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, pos
       {branches.length > 0 && (
         <div className={styles.field}>
           <label>Branch</label>
-          <select value={form.branch} onChange={(e) => setField('branch', e.target.value)}>
+          <select value={form.branch} onChange={(e) => setField('branch', e.target.value)}required>
             <option value="">—</option>
             {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
@@ -317,19 +317,19 @@ function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, pos
         </div>
         <div className={styles.field}>
           <label>Date of Birth</label>
-          <input type="date" value={form.date_of_birth} onChange={(e) => setField('date_of_birth', e.target.value)} />
+          <input type="date" value={form.date_of_birth} onChange={(e) => setField('date_of_birth', e.target.value)}required />
         </div>
       </div>
       <div className={styles.row2}>
         <div className={styles.field}>
           <label>Employment Status</label>
-          <select value={form.employment_status} onChange={(e) => setField('employment_status', e.target.value)}>
+          <select value={form.employment_status} onChange={(e) => setField('employment_status', e.target.value)}required>
             {EMPLOYMENT_STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
           </select>
         </div>
         <div className={styles.field}>
           <label>Contract Type</label>
-          <select value={form.contract_type} onChange={(e) => setField('contract_type', e.target.value)}>
+          <select value={form.contract_type} onChange={(e) => setField('contract_type', e.target.value)}required>
             {CONTRACT_TYPE_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
@@ -341,7 +341,7 @@ function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, pos
       <div className={styles.row2}>
         <div className={styles.field}>
           <label>Confirmation Date</label>
-          <input type="date" value={form.confirmation_date} onChange={(e) => setField('confirmation_date', e.target.value)} />
+          <input type="date" value={form.confirmation_date} onChange={(e) => setField('confirmation_date', e.target.value)}required />
         </div>
         <div className={styles.field}>
           <label>Termination Date</label>
@@ -353,35 +353,35 @@ function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, pos
       <div className={styles.row2}>
         <div className={styles.field}>
           <label>National ID</label>
-          <input value={form.national_id} onChange={(e) => setField('national_id', e.target.value)} />
+          <input value={form.national_id} onChange={(e) => setField('national_id', e.target.value)}required />
         </div>
         <div className={styles.field}>
           <label>Nationality</label>
-          <input value={form.nationality} onChange={(e) => setField('nationality', e.target.value)} />
+          <input value={form.nationality} onChange={(e) => setField('nationality', e.target.value)}required />
         </div>
       </div>
       <div className={styles.row2}>
         <div className={styles.field}>
           <label>TIN Number</label>
-          <input value={form.tin_number} onChange={(e) => setField('tin_number', e.target.value)} />
+          <input value={form.tin_number} onChange={(e) => setField('tin_number', e.target.value)}required />
         </div>
         <div className={styles.field}>
           <label>NSSF Number</label>
-          <input value={form.nssf_number} onChange={(e) => setField('nssf_number', e.target.value)} />
+          <input value={form.nssf_number} onChange={(e) => setField('nssf_number', e.target.value)}required />
         </div>
       </div>
       <div className={styles.field}>
         <label>Address</label>
-        <textarea rows={2} value={form.address} onChange={(e) => setField('address', e.target.value)} />
+        <textarea rows={2} value={form.address} onChange={(e) => setField('address', e.target.value)}required />
       </div>
       <div className={styles.row2}>
         <div className={styles.field}>
           <label>Next of Kin</label>
-          <input value={form.next_of_kin} onChange={(e) => setField('next_of_kin', e.target.value)} />
+          <input value={form.next_of_kin} onChange={(e) => setField('next_of_kin', e.target.value)}required />
         </div>
         <div className={styles.field}>
           <label>Next of Kin Contact</label>
-          <input value={form.next_of_kin_contact} onChange={(e) => setField('next_of_kin_contact', e.target.value)} />
+          <input value={form.next_of_kin_contact} onChange={(e) => setField('next_of_kin_contact', e.target.value)}required />
         </div>
       </div>
     </FormModal>
