@@ -2,12 +2,21 @@ from rest_framework import generics, filters
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.permissions import IsAuthenticated
 from .models import Department, Grade, Position, Employee
-from .serializers import (
+from .serializers import (BranchSerializer,
     DepartmentSerializer, GradeSerializer, PositionSerializer,
-    EmployeeListSerializer, EmployeeDetailSerializer,
+    EmployeeListSerializer, EmployeeDetailSerializer, EmployeeCreateSerializer,
 )
 from apps.authentication.permissions import IsHROrAdmin, IsDepartmentHeadOrAbove
 from apps.authentication.audit import AuditLogMixin
+
+from apps.authentication.permissions import (IsHROrAdmin,IsDepartmentHeadOrAbove,CanViewOrganisationData)
+from .models import Branch
+
+
+class BranchListCreateView(generics.ListCreateAPIView):
+    queryset = Branch.objects.all()
+    serializer_class = BranchSerializer
+    permission_classes = [IsAuthenticated]
 
 
 class DepartmentListCreateView(AuditLogMixin, generics.ListCreateAPIView):
@@ -39,7 +48,7 @@ class GradeDetailView(AuditLogMixin, generics.RetrieveUpdateDestroyAPIView):
 class PositionListCreateView(AuditLogMixin, generics.ListCreateAPIView):
     queryset           = Position.objects.all()
     serializer_class   = PositionSerializer
-    permission_classes = [IsHROrAdmin]
+    permission_classes = [CanViewOrganisationData]
     filter_backends    = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields   = ['department', 'is_active']
     search_fields      = ['title']
@@ -60,7 +69,9 @@ class EmployeeListCreateView(AuditLogMixin, generics.ListCreateAPIView):
     ordering_fields    = ['employee_id', 'join_date', 'user__last_name']
 
     def get_serializer_class(self):
-        return EmployeeDetailSerializer if self.request.method == 'POST' else EmployeeListSerializer
+        if self.request.method == 'POST':
+            return EmployeeCreateSerializer
+        return EmployeeListSerializer
 
 
 class EmployeeDetailView(AuditLogMixin, generics.RetrieveUpdateDestroyAPIView):

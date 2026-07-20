@@ -10,8 +10,7 @@ from django.utils.dateparse import parse_date
 
 from .serializers import (
     CustomTokenObtainPairSerializer, UserSerializer,
-    UserCreateSerializer, ChangePasswordSerializer,
-    AuditLogSerializer,
+    ChangePasswordSerializer, AuditLogSerializer,
 )
 from .permissions import IsAdmin
 from .models import AuditLog
@@ -66,40 +65,36 @@ class ChangePasswordView(APIView):
         return Response({'detail': 'Password changed successfully.'})
 
 
-class UserListCreateView(generics.ListCreateAPIView):
-    """GET /api/auth/users/   — admin only."""
+class UserListView(generics.ListAPIView):
+    """GET /api/auth/users/   — admin only. Read-only: users are auto-created via Employee creation."""
     queryset           = User.objects.all().order_by('-date_joined')
-    permission_classes = [IsAdmin]
-
-    def get_serializer_class(self):
-        if self.request.method == 'POST':
-            return UserCreateSerializer
-        return UserSerializer
-
-    def create(self, request, *args, **kwargs):
-        serializer = UserCreateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.save()
-        log_audit_event(
-            action='CREATE',
-            resource='User',
-            request=request,
-            user=request.user,
-            instance=user,
-            detail=f'Created user {user.username}',
-        )
-        return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
-
-
-class UserWithoutEmployeeProfileView(generics.ListAPIView):
-    """GET /api/auth/users/without-profile/ — users not yet linked to an employee record."""
     serializer_class   = UserSerializer
     permission_classes = [IsAdmin]
 
-    def get_queryset(self):
-        return User.objects.filter(employee_profile__isnull=True).order_by('username')
 
+class ResetUserPasswordView(APIView):
+    """POST /api/auth/users/<id>/reset-password/  — admin only. Resets user password to '123456'."""
+    permission_classes = [IsAdmin]
 
+    def post(self, request, pk):
+        try:
+            user = User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+        
+        user.set_password('123456')
+        user.must_change_password = True
+        user.save()
+        
+        log_audit_event(
+            action='UPDATE',
+            resource='UserPassword',
+            request=request,
+            user=request.user,
+            instance=user,
+            detail=f'Admin {request.user.username} reset password for user {user.username}',
+        )
+        return Response({'detail': f'Password reset to 123456 for {user.username}.'})
 class UserDetailView(AuditLogMixin, generics.RetrieveUpdateDestroyAPIView):
     queryset           = User.objects.all()
     serializer_class   = UserSerializer

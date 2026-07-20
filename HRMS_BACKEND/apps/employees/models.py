@@ -1,5 +1,7 @@
 from django.db import models
 from django.conf import settings
+from django.db.models import Max
+from datetime import datetime
 
 
 class Department(models.Model):
@@ -10,7 +12,7 @@ class Department(models.Model):
     head        = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='headed_department')
     region      = models.CharField(max_length=50, blank=True)
     created_at  = models.DateTimeField(auto_now_add=True)
-
+    branch = models.ForeignKey('Branch', on_delete=models.CASCADE, related_name='departments', null=True, blank=True)
     class Meta:
         db_table = 'departments'
         ordering = ['name']
@@ -49,7 +51,7 @@ class Position(models.Model):
 
 
 class Employee(models.Model):
-    GENDER_CHOICES = [('M','Male'), ('F','Female'), ('O','Other')]
+    GENDER_CHOICES = [('M','Male'), ('F','Female')]
     EMPLOYMENT_STATUS = [
         ('active',      'Active'),
         ('on_leave',    'On Leave'),
@@ -67,7 +69,7 @@ class Employee(models.Model):
     ]
 
     user            = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='employee_profile')
-    employee_id     = models.CharField(max_length=20, unique=True)   # e.g. NWSC-0124
+    employee_id     = models.CharField(max_length=20, unique=True)   # e.g. NWSC-2026-0001
     department      = models.ForeignKey(Department, on_delete=models.PROTECT, related_name='employees')
     position        = models.ForeignKey(Position, on_delete=models.PROTECT)
     grade           = models.ForeignKey(Grade, null=True, blank=True, on_delete=models.SET_NULL)
@@ -98,7 +100,8 @@ class Employee(models.Model):
 
     created_at      = models.DateTimeField(auto_now_add=True)
     updated_at      = models.DateTimeField(auto_now=True)
-
+    branch = models.ForeignKey('Branch', on_delete=models.PROTECT, related_name='employees', null=True, blank=True)
+    
     class Meta:
         db_table = 'employees'
         ordering = ['employee_id']
@@ -109,3 +112,80 @@ class Employee(models.Model):
     @property
     def full_name(self):
         return self.user.full_name
+
+    @classmethod
+    def _next_employee_id(cls):
+        """Auto-generate employee ID in format NWSC-{YEAR}-{MIN_4_DIGITS}."""
+        year = datetime.now().year
+        prefix = f'NWSC-{year}-'
+        # Find the highest existing sequence number for this year's prefix
+        last_id = cls.objects.filter(employee_id__startswith=prefix) \
+                             .aggregate(max_id=Max('employee_id'))['max_id']
+        if last_id:
+            # Extract the numeric suffix after the prefix
+            try:
+                last_num = int(last_id[len(prefix):])
+                next_num = last_num + 1
+            except (ValueError, IndexError):
+                next_num = 1
+        else:
+            next_num = 1
+        # Pad to at least 4 digits — grows unbounded (e.g., 0001, 9999, 10000, 100001)
+        return f'{prefix}{next_num:04d}' if next_num < 10000 else f'{prefix}{next_num}'
+
+    @classmethod
+    def create_with_user(cls, first_name, last_name, email, extra_user_fields=None, **employee_fields):
+        """
+        Create an Employee together with a User account.
+        
+        Args:
+            first_name: User's first name
+            last_name: User's last name
+            email: User's email
+            extra_user_fields: Dict of additional User fields (phone, etc.)
+            **employee_fields: All other Employee model fields
+        
+        Returns:
+            The created Employee instance
+        """
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        
+        employee_id = cls._next_employee_id()
+        extra_user = extra_user_fields or {}
+        
+        user = User.objects.create_user(
+            username=employee_id,
+            email=email,
+            password='123456',
+            first_name=first_name,
+            last_name=last_name,
+            role='employee',
+            must_change_password=True,
+            **extra_user,
+        )
+        
+        employee = cls.objects.create(
+            user=user,
+            employee_id=employee_id,
+            **employee_fields,
+        )
+        return employee
+
+    def save(self, *args, **kwargs):
+        if not self.employee_id:
+            self.employee_id = self._next_employee_id()
+        super().save(*args, **kwargs)
+    
+class Branch(models.Model):
+    name       = models.CharField(max_length=100, unique=True)
+    code       = models.CharField(max_length=20, unique=True)
+    location   = models.CharField(max_length=100, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'branches'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name

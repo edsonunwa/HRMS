@@ -13,4 +13,4 @@ openpyxl>=3.1
 reportlab>=5.0
 python-dotenv
 python-decouple
-psycopg2  
+psycopg2-binary
