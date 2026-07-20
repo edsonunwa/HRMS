@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FiPlus, FiEdit2, FiTrash2, FiUserCheck, FiUserX } from 'react-icons/fi';
+import { FiShield, FiUserCheck, FiUserX, FiRefreshCw } from 'react-icons/fi';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { userService } from '../../services/userService';
 import { ROLES, ROLE_LABELS } from '../../utils/constants';
@@ -8,17 +8,12 @@ import styles from './UserManagement.module.css';
 
 const ROLE_OPTIONS = Object.values(ROLES);
 
-const EMPTY_FORM = {
-  username: '', email: '', first_name: '', last_name: '',
-  role: ROLES.EMPLOYEE, phone: '', password: '', password2: '',
-};
-
 function initials(u) {
   return ((u.first_name?.[0] || '') + (u.last_name?.[0] || u.username?.[0] || '')).toUpperCase();
 }
 
-function CreateUserModal({ onClose, onCreated }) {
-  const [form, setForm] = useState(EMPTY_FORM);
+function AssignRoleModal({ user, onClose, onSaved }) {
+  const [form, setForm] = useState({ role: user.role });
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -31,99 +26,10 @@ function CreateUserModal({ onClose, onCreated }) {
     setSubmitting(true);
     setErrors({});
     try {
-      const created = await userService.create(form);
-      onCreated(created);
-    } catch (err) {
-      setErrors(err.response?.data || { non_field: 'Failed to create user.' });
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <div className={styles.modalTitle}>Create User</div>
-        <form onSubmit={handleSubmit}>
-          <div className={styles.row2}>
-            <div className={styles.field}>
-              <label>Username</label>
-              <input value={form.username} onChange={(e) => setField('username', e.target.value)} required />
-              {errors.username && <div className={styles.fieldError}>{errors.username}</div>}
-            </div>
-            <div className={styles.field}>
-              <label>Email</label>
-              <input type="email" value={form.email} onChange={(e) => setField('email', e.target.value)} required />
-              {errors.email && <div className={styles.fieldError}>{errors.email}</div>}
-            </div>
-          </div>
-          <div className={styles.row2}>
-            <div className={styles.field}>
-              <label>First Name</label>
-              <input value={form.first_name} onChange={(e) => setField('first_name', e.target.value)} />
-            </div>
-            <div className={styles.field}>
-              <label>Last Name</label>
-              <input value={form.last_name} onChange={(e) => setField('last_name', e.target.value)} />
-            </div>
-          </div>
-          <div className={styles.row2}>
-            <div className={styles.field}>
-              <label>Role</label>
-              <select value={form.role} onChange={(e) => setField('role', e.target.value)}>
-                {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
-              </select>
-            </div>
-            <div className={styles.field}>
-              <label>Phone</label>
-              <input value={form.phone} onChange={(e) => setField('phone', e.target.value)} />
-            </div>
-          </div>
-          <div className={styles.row2}>
-            <div className={styles.field}>
-              <label>Initial Password</label>
-              <input type="password" value={form.password} onChange={(e) => setField('password', e.target.value)} required minLength={8} />
-              {errors.password && <div className={styles.fieldError}>{errors.password}</div>}
-            </div>
-            <div className={styles.field}>
-              <label>Confirm Password</label>
-              <input type="password" value={form.password2} onChange={(e) => setField('password2', e.target.value)} required minLength={8} />
-            </div>
-          </div>
-          {errors.non_field && <div className={styles.errorBanner}>{errors.non_field}</div>}
-          <div className={styles.modalFooter}>
-            <button type="button" className={styles.btnOutline} onClick={onClose}>Cancel</button>
-            <button type="submit" className={styles.btnPrimary} disabled={submitting}>
-              {submitting ? 'Creating…' : 'Create User'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-function EditUserModal({ user, onClose, onSaved }) {
-  const [form, setForm] = useState({
-    first_name: user.first_name || '', last_name: user.last_name || '',
-    phone: user.phone || '', role: user.role,
-  });
-  const [errors, setErrors] = useState({});
-  const [submitting, setSubmitting] = useState(false);
-
-  function setField(key, value) {
-    setForm((f) => ({ ...f, [key]: value }));
-  }
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setSubmitting(true);
-    setErrors({});
-    try {
-      const updated = await userService.update(user.id, form);
+      const updated = await userService.update(user.id, { role: form.role });
       onSaved(updated);
     } catch (err) {
-      setErrors(err.response?.data || { non_field: 'Failed to update user.' });
+      setErrors(err.response?.data || { non_field: 'Failed to update role.' });
     } finally {
       setSubmitting(false);
     }
@@ -132,35 +38,28 @@ function EditUserModal({ user, onClose, onSaved }) {
   return (
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <div className={styles.modalTitle}>Edit {user.username}</div>
+        <div className={styles.modalTitle}>
+          Assign Role — {user.full_name || user.username}
+        </div>
         <form onSubmit={handleSubmit}>
-          <div className={styles.row2}>
-            <div className={styles.field}>
-              <label>First Name</label>
-              <input value={form.first_name} onChange={(e) => setField('first_name', e.target.value)} />
-            </div>
-            <div className={styles.field}>
-              <label>Last Name</label>
-              <input value={form.last_name} onChange={(e) => setField('last_name', e.target.value)} />
+          <div className={styles.userInfoRow}>
+            <div className={styles.avaLarge}>{initials(user)}</div>
+            <div>
+              <div className={styles.uName}>{user.full_name || user.username}</div>
+              <div className={styles.uEmail}>{user.email} &middot; {user.employee_id || user.username}</div>
             </div>
           </div>
-          <div className={styles.row2}>
-            <div className={styles.field}>
-              <label>Role</label>
-              <select value={form.role} onChange={(e) => setField('role', e.target.value)}>
-                {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
-              </select>
-            </div>
-            <div className={styles.field}>
-              <label>Phone</label>
-              <input value={form.phone} onChange={(e) => setField('phone', e.target.value)} />
-            </div>
+          <div className={styles.field}>
+            <label>Role</label>
+            <select value={form.role} onChange={(e) => setField('role', e.target.value)}>
+              {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+            </select>
           </div>
           {errors.non_field && <div className={styles.errorBanner}>{errors.non_field}</div>}
           <div className={styles.modalFooter}>
             <button type="button" className={styles.btnOutline} onClick={onClose}>Cancel</button>
             <button type="submit" className={styles.btnPrimary} disabled={submitting}>
-              {submitting ? 'Saving…' : 'Save Changes'}
+              {submitting ? 'Saving…' : 'Assign Role'}
             </button>
           </div>
         </form>
@@ -173,15 +72,14 @@ export default function UserManagement() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showCreate, setShowCreate] = useState(false);
-  const [editingUser, setEditingUser] = useState(null);
+  const [assigningUser, setAssigningUser] = useState(null);
   const { query } = useSearchContext();
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return users;
     return users.filter((u) =>
-      [u.username, u.email, u.first_name, u.last_name, u.role_display, u.phone]
+      [u.username, u.email, u.first_name, u.last_name, u.role_display]
         .some((val) => String(val ?? '').toLowerCase().includes(q))
     );
   }, [users, query]);
@@ -201,14 +99,9 @@ export default function UserManagement() {
 
   useEffect(() => { load(); }, [load]);
 
-  function handleCreated(created) {
-    setUsers((u) => [created, ...u]);
-    setShowCreate(false);
-  }
-
   function handleSaved(updated) {
     setUsers((u) => u.map((x) => (x.id === updated.id ? updated : x)));
-    setEditingUser(null);
+    setAssigningUser(null);
   }
 
   async function toggleActive(user) {
@@ -216,10 +109,16 @@ export default function UserManagement() {
     setUsers((u) => u.map((x) => (x.id === updated.id ? updated : x)));
   }
 
-  async function handleDelete(user) {
-    if (!window.confirm(`Permanently delete user "${user.username}"? This cannot be undone.`)) return;
-    await userService.remove(user.id);
-    setUsers((u) => u.filter((x) => x.id !== user.id));
+  async function handleResetPassword(user) {
+    if (!window.confirm(`Reset password for ${user.full_name || user.username} to 123456?`)) return;
+    try {
+      await userService.resetPassword(user.id);
+      // Refresh to update must_change_password flag
+      const updated = await userService.list();
+      setUsers(updated);
+    } catch (err) {
+      alert('Failed to reset password.');
+    }
   }
 
   return (
@@ -227,11 +126,8 @@ export default function UserManagement() {
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>User Management</h1>
-          <p className={styles.sub}>Create and manage system accounts and roles.</p>
+          <p className={styles.sub}>Assign roles and manage system accounts. User accounts are auto-created when an employee is added.</p>
         </div>
-        <button className={styles.btnPrimary} onClick={() => setShowCreate(true)}>
-          <FiPlus /> Create User
-        </button>
       </div>
 
       <div className={styles.card}>
@@ -246,7 +142,7 @@ export default function UserManagement() {
               <tr>
                 <th>User</th>
                 <th>Role</th>
-                <th>Phone</th>
+                <th>Employee ID</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
@@ -263,26 +159,28 @@ export default function UserManagement() {
                       </div>
                     </div>
                   </td>
-                  <td>{u.role_display}</td>
-                  <td>{u.phone || '—'}</td>
+                  <td>
+                    <span className={styles.roleBadge}>{u.role_display}</span>
+                  </td>
+                  <td style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{u.username}</td>
                   <td>
                     <span className={`${styles.statusPill} ${u.is_active ? styles.active : styles.inactive}`}>
                       {u.is_active ? 'Active' : 'Inactive'}
                     </span>
                     {u.must_change_password && (
-                      <span className={styles.pendingPill}>Password reset pending</span>
+                      <span className={styles.pendingPill}>Password reset</span>
                     )}
                   </td>
                   <td>
                     <div className={styles.actionsCell}>
-                      <button className={styles.iconBtn} onClick={() => setEditingUser(u)} aria-label="Edit">
-                        <FiEdit2 />
+                      <button className={styles.iconBtn} onClick={() => setAssigningUser(u)} aria-label="Assign role" title="Assign role">
+                        <FiShield />
                       </button>
-                      <button className={styles.iconBtn} onClick={() => toggleActive(u)} aria-label="Toggle active">
+                      <button className={styles.iconBtn} onClick={() => handleResetPassword(u)} aria-label="Reset password" title="Reset password to 123456">
+                        <FiRefreshCw />
+                      </button>
+                      <button className={styles.iconBtn} onClick={() => toggleActive(u)} aria-label="Toggle active" title={u.is_active ? 'Deactivate' : 'Activate'}>
                         {u.is_active ? <FiUserX /> : <FiUserCheck />}
-                      </button>
-                      <button className={`${styles.iconBtn} ${styles.dangerBtn}`} onClick={() => handleDelete(u)} aria-label="Delete">
-                        <FiTrash2 />
                       </button>
                     </div>
                   </td>
@@ -293,11 +191,8 @@ export default function UserManagement() {
         )}
       </div>
 
-      {showCreate && (
-        <CreateUserModal onClose={() => setShowCreate(false)} onCreated={handleCreated} />
-      )}
-      {editingUser && (
-        <EditUserModal user={editingUser} onClose={() => setEditingUser(null)} onSaved={handleSaved} />
+      {assigningUser && (
+        <AssignRoleModal user={assigningUser} onClose={() => setAssigningUser(null)} onSaved={handleSaved} />
       )}
     </DashboardLayout>
   );
