@@ -9,3 +9,8 @@ python-decouple>=3.8
 celery>=5.3
 redis>=5.0
 gunicorn>=21.2
+openpyxl>=3.1
+reportlab>=5.0
+python-dotenv
+python-decouple
+psycopg2-binary

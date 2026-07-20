@@ -10,3 +10,4 @@ employeesService.me = async () => {
 export const departmentsService = createCrudService('employees/departments');
 export const gradesService = createCrudService('employees/grades');
 export const positionsService = createCrudService('employees/positions');
+export const branchesService = createCrudService('employees/branches');

@@ -1,9 +1,10 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
-import { FiSearch, FiBell, FiMessageSquare, FiGrid } from 'react-icons/fi';
+import { FiSearch, FiMessageSquare, FiGrid } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import { useSearchContext } from '../../context/SearchContext';
+import NotificationCenter from '../common/NotificationCenter';
 import styles from './TopBar.module.css';
 
 function TopBar({ portalLabel, searchPlaceholder }) {
@@ -38,10 +39,7 @@ function TopBar({ portalLabel, searchPlaceholder }) {
       </div>
 
       <div className={styles.actions}>
-        <button className={styles.iconBtn} aria-label="Notifications" onClick={() => navigate('/leave')}>
-          <FiBell />
-          <span className={styles.badge} aria-hidden="true" />
-        </button>
+        <NotificationCenter user={user} />
         <button className={styles.iconBtn} aria-label="Messages" onClick={() => window.location.href = 'mailto:hr@nwsc.co.ug'}>
           <FiMessageSquare />
         </button>

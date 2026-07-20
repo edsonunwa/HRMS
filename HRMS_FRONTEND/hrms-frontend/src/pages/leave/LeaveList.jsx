@@ -9,7 +9,7 @@ import { useApiResource } from '../../hooks/useApiResource';
 import { useSearch } from '../../hooks/useSearch';
 import { useAuth } from '../../context/AuthContext';
 import { leaveTypesService, leaveBalancesService, leaveRequestsService } from '../../services/leaveService';
-import { IS_HR_OR_ADMIN, IS_DEPARTMENT_HEAD_OR_ABOVE, ROLES } from '../../utils/constants';
+import { IS_HR_OR_ADMIN, ROLES } from '../../utils/constants';
 import styles from './LeaveList.module.css';
 
 /* ---------- Leave Types tab ---------- */
@@ -247,6 +247,11 @@ function RequestsTab({ canApprove }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [commentModal, setCommentModal] = useState(null); // { row, decision, override }
   const [comment, setComment] = useState('');
+  
+  // Check if current user has a pending leave request
+  const hasPendingRequest = data?.some(req => 
+    req.employee_user_id === user?.id && req.status === 'pending'
+  );
 
   function handleSaved() { setModalOpen(false); refetch(); }
 
@@ -293,7 +298,14 @@ function RequestsTab({ canApprove }) {
     <div className={styles.card}>
       {error && <div className={styles.errorBanner}>{error}</div>}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--space-md)' }}>
-        <button className={styles.btnPrimary} onClick={() => setModalOpen(true)}><FiPlus /> Request Leave</button>
+        <button 
+          className={styles.btnPrimary} 
+          onClick={() => setModalOpen(true)}
+          disabled={hasPendingRequest}
+          title={hasPendingRequest ? 'You have a pending leave request' : 'Request Leave'}
+        >
+          <FiPlus /> {hasPendingRequest ? 'Pending Request Exists' : 'Request Leave'}
+        </button>
       </div>
       <DataTable
         columns={columns}
@@ -303,17 +315,21 @@ function RequestsTab({ canApprove }) {
           const isOwner = row.employee_user_id === user?.id;
           const isHR = [ROLES.HR_OFFICER, ROLES.HR_DIRECTOR, ROLES.ADMIN].includes(user?.role);
           const canCancel = row.status === 'pending' && (isOwner || isHR);
-          const canRecall = row.status === 'approved' && (isHR || (isOwner && row.start_date > TODAY));
+          const canRecall = row.status === 'approved' && isHR; // Only HR can recall approved requests
           const cancelBtn = canCancel
             ? <button className={`${styles.iconBtn} ${styles.dangerBtn}`} onClick={() => handleCancel(row)} title="Cancel"><FiTrash2 /></button>
             : canRecall
             ? <button className={`${styles.iconBtn} ${styles.warnBtn}`} onClick={() => handleCancel(row)} title="Recall"><FiX /></button>
             : null;
 
+          // Department Heads and Senior Managers cannot approve their own requests
+          const isDeptHeadOrSeniorMgmt = user?.role === ROLES.DEPARTMENT_HEAD || user?.role === ROLES.SENIOR_MANAGEMENT;
+          const isSelfApproval = isOwner && isDeptHeadOrSeniorMgmt;
+          
           if (row.status !== 'pending' || !canApprove) return cancelBtn;
           const myLevel = getMyLevel(user, row);
           const required = row.current_level;
-          if (myLevel === null) return cancelBtn;
+          if (myLevel === null || isSelfApproval) return cancelBtn;
 
           // Exact turn — normal approve / reject
           if (myLevel === required) return (

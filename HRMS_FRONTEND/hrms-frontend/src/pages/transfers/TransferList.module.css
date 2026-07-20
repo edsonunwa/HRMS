@@ -19,3 +19,9 @@
 .field label { display:block; font-size:var(--font-size-sm); font-weight:var(--font-weight-medium); color:var(--color-text); margin-bottom:4px; }
 .field input, .field select, .field textarea { width:100%; padding:0.55rem 0.7rem; border:1px solid var(--color-border); border-radius:var(--radius-sm); font-size:var(--font-size-sm); }
 .row2 { display:grid; grid-template-columns:1fr 1fr; gap:var(--space-md); }
+
+.summaryBox { margin-bottom:var(--space-md); padding-bottom:var(--space-sm); border-bottom:1px solid var(--color-border); }
+.summaryValue { font-size:var(--font-size-sm); color:var(--color-text); padding:0.35rem 0; }
+
+.statusCell { display:flex; flex-direction:column; gap:2px; }
+.statusNote { font-size:0.7rem; color:var(--color-text-muted); }
