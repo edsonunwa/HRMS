@@ -28,7 +28,7 @@ class PerformanceReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model  = PerformanceReview
         fields = "__all__"
-        read_only_fields = ["overall_score", "grade", "status", "created_at"]
+        read_only_fields = ["overall_score", "grade", "status", "created_at", "appraiser", "appraiser_score", "appraiser_comments"]
 
 
 class JobEvaluationSerializer(serializers.ModelSerializer):

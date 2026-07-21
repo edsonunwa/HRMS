@@ -3,6 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.authentication.models import ROLES
 from .models import JobEvaluation, PerformanceReview, KPI, PerformanceCycle
 from apps.employees.models import Employee
 
@@ -11,9 +12,23 @@ class EvaluationDashboardAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        user = request.user
+
+        # ── Role-based queryset filtering ──────────────────────────────
+        if user.role in (ROLES.ADMIN, ROLES.HR_OFFICER, ROLES.HR_DIRECTOR):
+            evaluation_qs = JobEvaluation.objects.all()
+        elif user.role == ROLES.DEPARTMENT_HEAD:
+            profile = user.get_employee_profile()
+            if profile is None:
+                evaluation_qs = JobEvaluation.objects.none()
+            else:
+                evaluation_qs = JobEvaluation.objects.filter(position__department=profile.department)
+        else:
+            evaluation_qs = JobEvaluation.objects.none()
+
         # ── Job Evaluation Status Breakdown ──────────────────────────────
         eval_status = (
-            JobEvaluation.objects
+            evaluation_qs
             .values("status")
             .annotate(total=Count("id"))
         )
@@ -30,7 +45,7 @@ class EvaluationDashboardAPIView(APIView):
 
         # ── Average Score by Position (top 10) ───────────────────────────
         position_scores = (
-            JobEvaluation.objects
+            evaluation_qs
             .exclude(total_score=None)
             .values("position__title")
             .annotate(avg_score=Avg("total_score"))
@@ -54,7 +69,7 @@ class EvaluationDashboardAPIView(APIView):
             "81-100": 0,
         }
 
-        all_scores = JobEvaluation.objects.exclude(total_score=None).values_list("total_score", flat=True)
+        all_scores = evaluation_qs.exclude(total_score=None).values_list("total_score", flat=True)
         for score in all_scores:
             s = float(score)
             if s <= 20:
@@ -75,14 +90,14 @@ class EvaluationDashboardAPIView(APIView):
 
         # ── Overall Average Score ────────────────────────────────────────
         overall_avg = (
-            JobEvaluation.objects
+            evaluation_qs
             .aggregate(avg=Avg("total_score"))
             .get("avg")
         ) or 0
 
         # ── Evaluations by Department ────────────────────────────────────
         dept_evaluations = (
-            JobEvaluation.objects
+            evaluation_qs
             .exclude(total_score=None)
             .values("position__department__name")
             .annotate(
@@ -101,6 +116,9 @@ class EvaluationDashboardAPIView(APIView):
             for item in dept_evaluations
         ]
 
+        # ── Role-based access metadata ──────────────────────────────────
+        can_create = user.role in (ROLES.ADMIN, ROLES.HR_OFFICER, ROLES.HR_DIRECTOR)
+
         return Response({
             "summary": {
                 "total_evaluations": total_evaluations,
@@ -108,6 +126,8 @@ class EvaluationDashboardAPIView(APIView):
                 "pending": status_data["pending"],
                 "evaluated": status_data["evaluated"],
                 "approved": status_data["approved"],
+                "user_role": user.role,
+                "can_create_evaluation": can_create,
             },
             "status_breakdown": status_data,
             "position_scores": positions,

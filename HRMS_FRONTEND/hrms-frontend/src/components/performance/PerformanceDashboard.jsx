@@ -48,6 +48,14 @@ export default function PerformanceDashboard() {
     <Box sx={{ mb: 4 }}>
       <SummaryCards summary={summary} />
 
+      {summary.user_role === "hr_officer" || summary.user_role === "hr_director" || summary.user_role === "admin" ? (
+        <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
+          <button onClick={() => alert("Create KPI - implement form")}>
+            + New KPI
+          </button>
+        </Box>
+      ) : null}
+
       <Box
         sx={{
           display: "grid",

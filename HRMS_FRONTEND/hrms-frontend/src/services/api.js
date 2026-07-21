@@ -6,15 +6,19 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Attach access token to every request
+// Attach access token to every request except login and token refresh
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem(TOKEN_KEY);
+  const excluded = ['/auth/login/', '/token/refresh/'];
+  if (token && !excluded.some((p) => config.url.includes(p))) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
-  
-  console.log("TOKEN:", token);
-
-
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+// Debug helper: log outgoing requests
+api.interceptors.request.use((config) => {
+  console.log('[API]', config.method?.toUpperCase(), config.url);
   return config;
 });
 
@@ -27,7 +31,7 @@ api.interceptors.response.use(
       original._retry = true;
       try {
         const refresh = localStorage.getItem(REFRESH_TOKEN_KEY);
-        const { data } = await axios.post(`${API_BASE_URL}/token/refresh/`, { refresh });
+        const { data } = await axios.post(`${API_BASE_URL}/api/token/refresh/`, { refresh });
         localStorage.setItem(TOKEN_KEY, data.access);
         original.headers.Authorization = `Bearer ${data.access}`;
         return api(original);

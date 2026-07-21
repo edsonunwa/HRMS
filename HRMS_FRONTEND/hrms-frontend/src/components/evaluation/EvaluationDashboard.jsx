@@ -47,6 +47,14 @@ export default function EvaluationDashboard() {
     <Box sx={{ mb: 4 }}>
       <EvaluationSummaryCards summary={summary} />
 
+      {summary.can_create_evaluation && (
+        <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
+          <button onClick={() => alert("Create Evaluation - implement form")}>
+            + New Evaluation
+          </button>
+        </Box>
+      )}
+
       <Box
         sx={{
           display: "grid",
