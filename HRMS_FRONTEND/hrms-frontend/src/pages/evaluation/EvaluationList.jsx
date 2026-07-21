@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import EvaluationDashboard from '../../components/evaluation/EvaluationDashboard';
 import { FiPlus, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import DataTable from '../../components/common/DataTable';
@@ -8,7 +9,7 @@ import EmployeePicker from '../../components/common/EmployeePicker';
 import { useApiResource } from '../../hooks/useApiResource';
 import { useSearch } from '../../hooks/useSearch';
 import { useAuth } from '../../context/AuthContext';
-import { cyclesService, kpisService, reviewsService, jobEvaluationsService } from '../../services/evaluationService';
+import { cyclesService, kpisService, reviewsService, jobEvaluationsService, evaluationService } from '../../services/evaluationService';
 import { employeesService, positionsService, gradesService } from '../../services/employeesService';
 import { IS_HR_OR_ADMIN, IS_DEPARTMENT_HEAD_OR_ABOVE } from '../../utils/constants';
 import styles from './EvaluationList.module.css';
@@ -260,16 +261,156 @@ function ReviewFormModal({ cycles, employeeOptions, onClose, onSaved }) {
   );
 }
 
+
+function ReviewAppraisalModal({ review, cycles, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    cycle: review.cycle?.id ?? '',
+    employee: review.employee?.id ?? '',
+    appraiser_score: review.appraiser_score ?? '',
+    appraiser_comments: review.appraiser_comments ?? '',
+  });
+  const [error, setError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  function setField(key, value) { setForm((f) => ({ ...f, [key]: value })); }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      await evaluationService.submitReview(review.id, {
+        appraiser_score: Number(form.appraiser_score),
+        appraiser_comments: form.appraiser_comments,
+      });
+      onSaved();
+    } catch (err) {
+      setError(err.response?.data ? JSON.stringify(err.response.data) : 'Submit failed.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <FormModal title="Appraise Performance Review" onClose={onClose} onSubmit={handleSubmit} submitting={submitting} error={error}>
+      <div className={styles.row2}>
+        <div className={styles.field}>
+          <label>Cycle</label>
+          <select value={form.cycle} onChange={(e) => setField('cycle', e.target.value)} disabled>
+            {cycles.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+        <div className={styles.field}>
+          <label>Employee</label>
+          <input value={review.employee_name || ''} disabled />
+        </div>
+      </div>
+      <div className={styles.field}>
+        <label>Appraiser Score (0-100)</label>
+        <input type="number" min="0" max="100" step="0.01" value={form.appraiser_score} onChange={(e) => setField('appraiser_score', e.target.value)} required />
+      </div>
+      <div className={styles.field}><label>Appraiser Comments</label><textarea rows={3} value={form.appraiser_comments} onChange={(e) => setField('appraiser_comments', e.target.value)} /></div>
+    </FormModal>
+  );
+}
+
+
+function ReviewSelfAssessModal({ review, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    self_score: review.self_score ?? '',
+    self_comments: review.self_comments ?? '',
+  });
+  const [error, setError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  function setField(key, value) { setForm((f) => ({ ...f, [key]: value })); }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      await evaluationService.selfAssess(review.id, {
+        self_score: Number(form.self_score),
+        self_comments: form.self_comments,
+      });
+      onSaved();
+    } catch (err) {
+      setError(err.response?.data ? JSON.stringify(err.response.data) : 'Submit failed.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <FormModal title="Self Assessment" onClose={onClose} onSubmit={handleSubmit} submitting={submitting} error={error}>
+      <div className={styles.field}>
+        <label>Self Score (0-100)</label>
+        <input type="number" min="0" max="100" step="0.01" value={form.self_score} onChange={(e) => setField('self_score', e.target.value)} required />
+      </div>
+      <div className={styles.field}><label>Self Comments</label><textarea rows={3} value={form.self_comments} onChange={(e) => setField('self_comments', e.target.value)} /></div>
+    </FormModal>
+  );
+}
+
+
+function ReviewApproveModal({ review, onClose, onSaved }) {
+  const [action, setAction] = useState('approve');
+  const [error, setError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      await evaluationService.approveReview(review.id, { action });
+      onSaved();
+    } catch (err) {
+      setError(err.response?.data ? JSON.stringify(err.response.data) : 'Action failed.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <FormModal title="Review Approval" onClose={onClose} onSubmit={handleSubmit} submitting={submitting} error={error}>
+      <div className={styles.field}>
+        <label>Decision</label>
+        <select value={action} onChange={(e) => setAction(e.target.value)}>
+          <option value="approve">Approve</option>
+          <option value="reject">Send Back</option>
+        </select>
+      </div>
+    </FormModal>
+  );
+}
+
 function ReviewsTab({ canWrite }) {
+  const { user } = useAuth();
   const { data, loading, error, refetch } = useApiResource(reviewsService);
   const filtered = useSearch(data, ['employee_name', 'cycle_name', 'status']);
   const cyclesRes = useApiResource(cyclesService);
-  const employeesRes = useApiResource(employeesService);
-  const [modalOpen, setModalOpen] = useState(false);
 
-  const employeeOptions = employeesRes.data.map((e) => ({ id: e.id, label: `${e.employee_id} — ${e.full_name}` }));
+  const isDeptHead = user?.role === 'department_head';
+  const isEmployee = user?.role === 'employee';
+  const isHR = user?.role === 'hr_officer' || user?.role === 'hr_director';
+  const isAdmin = user?.role === 'admin';
+
+  const deptEmpRes = useApiResource(isDeptHead ? evaluationService.getDepartmentEmployees : () => Promise.resolve([]), { lazy: true });
+  const employeesRes = useApiResource(employeesService);
+  const employeeOptions = isDeptHead ? (deptEmpRes.data || []) : (employeesRes.data || []);
+  useEffect(() => {
+    if (isDeptHead && !deptEmpRes.data) deptEmpRes.refetch();
+  }, [isDeptHead]);
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [appraisalModal, setAppraisalModal] = useState(null);
+  const [selfAssessModal, setSelfAssessModal] = useState(null);
+  const [approveModal, setApproveModal] = useState(null);
 
   function handleSaved() { setModalOpen(false); refetch(); }
+  function handleAppraisalSaved() { setAppraisalModal(null); refetch(); }
+  function handleSelfAssessSaved() { setSelfAssessModal(null); refetch(); }
+  function handleApproveSaved() { setApproveModal(null); refetch(); }
 
   const columns = [
     { key: 'employee_name', label: 'Employee' },
@@ -286,9 +427,41 @@ function ReviewsTab({ canWrite }) {
           <button className={styles.btnPrimary} onClick={() => setModalOpen(true)}><FiPlus /> New Review</button>
         </div>
       )}
-      <DataTable columns={columns} rows={filtered} loading={loading} />
+      <DataTable
+        columns={columns}
+        rows={filtered}
+        loading={loading}
+        actions={(row) => (
+          <>
+            {isEmployee && row.status === 'pending' && (
+              <button className={styles.iconBtn} onClick={() => setSelfAssessModal(row)} title="Self Assess">
+                <FiEdit2 />
+              </button>
+            )}
+            {isDeptHead && row.status === 'self_assessed' && (
+              <button className={styles.iconBtn} onClick={() => setAppraisalModal(row)} title="Appraise">
+                <FiEdit2 />
+              </button>
+            )}
+            {(isHR || isAdmin) && row.status === 'reviewed' && (
+              <button className={styles.iconBtn} onClick={() => setApproveModal(row)} title="Approve">
+                <FiEdit2 />
+              </button>
+            )}
+          </>
+        )}
+      />
       {modalOpen && (
         <ReviewFormModal cycles={cyclesRes.data} employeeOptions={employeeOptions} onClose={() => setModalOpen(false)} onSaved={handleSaved} />
+      )}
+      {appraisalModal && (
+        <ReviewAppraisalModal review={appraisalModal} cycles={cyclesRes.data} onClose={() => setAppraisalModal(null)} onSaved={handleAppraisalSaved} />
+      )}
+      {selfAssessModal && (
+        <ReviewSelfAssessModal review={selfAssessModal} onClose={() => setSelfAssessModal(null)} onSaved={handleSelfAssessSaved} />
+      )}
+      {approveModal && (
+        <ReviewApproveModal review={approveModal} onClose={() => setApproveModal(null)} onSaved={handleApproveSaved} />
       )}
     </div>
   );
@@ -388,11 +561,17 @@ function JobEvaluationsTab() {
   );
 }
 
+/* ---------- Dashboard tab ---------- */
+
+function DashboardTab() {
+  return <EvaluationDashboard />;
+}
+
 /* ---------- Page shell ---------- */
 
 export default function EvaluationList() {
   const { user } = useAuth();
-  const [tab, setTab] = useState('reviews');
+  const [tab, setTab] = useState('dashboard');
   const canManageCycles = IS_HR_OR_ADMIN.includes(user?.role);
   const canManageReviews = IS_DEPARTMENT_HEAD_OR_ABOVE.includes(user?.role);
   const canManageJobEval = IS_HR_OR_ADMIN.includes(user?.role);
@@ -407,6 +586,7 @@ export default function EvaluationList() {
       </div>
 
       <div className={styles.tabs}>
+        <button className={`${styles.tab} ${tab === 'dashboard' ? styles.tabActive : ''}`} onClick={() => setTab('dashboard')}>Dashboard</button>
         <button className={`${styles.tab} ${tab === 'reviews' ? styles.tabActive : ''}`} onClick={() => setTab('reviews')}>Reviews</button>
         <button className={`${styles.tab} ${tab === 'kpis' ? styles.tabActive : ''}`} onClick={() => setTab('kpis')}>KPIs</button>
         {canManageCycles && (
@@ -417,6 +597,7 @@ export default function EvaluationList() {
         )}
       </div>
 
+      {tab === 'dashboard' && <DashboardTab />}
       {tab === 'reviews' && <ReviewsTab canWrite={canManageReviews} />}
       {tab === 'kpis' && <KPIsTab />}
       {tab === 'cycles' && canManageCycles && <CyclesTab canWrite={canManageCycles} />}

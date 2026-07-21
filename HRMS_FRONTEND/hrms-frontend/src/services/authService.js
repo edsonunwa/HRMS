@@ -9,7 +9,7 @@ export const authService = {
     localStorage.setItem(USER_KEY, JSON.stringify(data.user));
     return data.user;
   },
-
+  
   logout() {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
