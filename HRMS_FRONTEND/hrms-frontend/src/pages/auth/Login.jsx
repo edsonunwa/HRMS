@@ -52,7 +52,7 @@ function Login() {
           {/* Username */}
           <div className={styles.fieldGroup}>
             <div className={styles.fieldHeader}>
-              <label htmlFor="username" className={styles.label}>Username</label>
+              <label htmlFor="username" className={styles.label}>Employee ID</label>
               <span className={styles.required}>Required</span>
             </div>
             <div className={styles.inputWrap}>
@@ -66,7 +66,7 @@ function Login() {
                 value={form.username}
                 onChange={handleChange}
                 className={styles.input}
-                placeholder="Enter your username"
+                placeholder="Enter your Employee ID"
               />
             </div>
           </div>

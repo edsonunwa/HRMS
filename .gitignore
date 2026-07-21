@@ -46,3 +46,4 @@ dist/
 .DS_Store
 Thumbs.db
 HRMS_BACKEND/hrms_db.sqlite3
+env/
