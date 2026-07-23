@@ -488,6 +488,7 @@ const ALL_TABS = [
   { key: 'departments', label: 'Departments', canRead: () => true },
   { key: 'grades', label: 'Grades', canRead: (role) => IS_HR_OR_ADMIN.includes(role) },
   { key: 'positions', label: 'Positions', canRead: (role) => IS_HR_OR_ADMIN.includes(role) },
+  { key: 'branches', label: 'Branches', canRead: (role) => IS_HR_OR_ADMIN.includes(role) },
 ];
 
 function DepartmentsTab({ canWrite }) {
@@ -815,6 +816,23 @@ export default function EmployeeList() {
       )}
       {tab === 'positions' && (
         <PositionsTab canWrite={canWriteLookups} />
+      )}
+      {tab === 'branches' && (
+        <SimpleResourceTab
+          service={branchesService}
+          canWrite={canWriteLookups}
+          searchKeys={['name', 'code', 'location']}
+          columns={[
+            { key: 'name', label: 'Name' },
+            { key: 'code', label: 'Code' },
+            { key: 'location', label: 'Location' },
+          ]}
+          fields={[
+            { key: 'name', label: 'Name', required: true },
+            { key: 'code', label: 'Code', required: true },
+            { key: 'location', label: 'Location' },
+          ]}
+        />
       )}
     </DashboardLayout>
   );

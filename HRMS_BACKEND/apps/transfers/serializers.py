@@ -78,6 +78,15 @@ class TransferSerializer(serializers.ModelSerializer):
             if employee is None:
                 raise serializers.ValidationError("No employee profile found for this user.")
 
+        # An employee may only have one active (pending) self-requested transfer at a time.
+        # This doesn't apply to HR-created records, which are finalized immediately.
+        if not is_hr_record:
+            if Transfer.objects.filter(employee=employee, status="pending").exists():
+                raise serializers.ValidationError(
+                    "You already have a pending transfer request. "
+                    "Please wait for it to be resolved or cancel it before submitting a new one."
+                )
+
     # AUTO-FILL (user should NOT send these directly)
         validated_data["employee"] = employee
         validated_data["from_department"] = employee.department
