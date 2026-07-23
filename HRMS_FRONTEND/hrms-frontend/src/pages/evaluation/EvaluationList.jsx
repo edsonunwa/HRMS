@@ -10,6 +10,7 @@ import { useApiResource } from '../../hooks/useApiResource';
 import { useSearch } from '../../hooks/useSearch';
 import { useAuth } from '../../context/AuthContext';
 import { cyclesService, kpisService, reviewsService, jobEvaluationsService, evaluationService } from '../../services/evaluationService';
+import { FaWeight } from 'react-icons/fa';
 import { employeesService, positionsService, gradesService } from '../../services/employeesService';
 import { IS_HR_OR_ADMIN, IS_DEPARTMENT_HEAD_OR_ABOVE } from '../../utils/constants';
 import styles from './EvaluationList.module.css';
@@ -269,18 +270,63 @@ function ReviewAppraisalModal({ review, cycles, onClose, onSaved }) {
     appraiser_score: review.appraiser_score ?? '',
     appraiser_comments: review.appraiser_comments ?? '',
   });
+  const [kpis, setKpis] = useState([]);
+  const [kpiScores, setKpiScores] = useState({});
+  const [kpiComments, setKpiComments] = useState({});
+  const [kpiLoading, setKpiLoading] = useState(true);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   function setField(key, value) { setForm((f) => ({ ...f, [key]: value })); }
+
+  // Fetch KPIs for this review when modal opens
+  useEffect(() => {
+    async function loadKpis() {
+      setKpiLoading(true);
+      try {
+        const kpiData = await evaluationService.getReviewKPIs(review.id);
+        setKpis(kpiData);
+        // Initialize KPI scores from existing appraiser_score if present
+        const initialScores = {};
+        const initialComments = {};
+        kpiData.forEach((kpi) => {
+          initialScores[kpi.id] = kpi.appraiser_score ?? '';
+          initialComments[kpi.id] = kpi.comments ?? '';
+        });
+        setKpiScores(initialScores);
+        setKpiComments(initialComments);
+      } catch (err) {
+        console.error('Failed to load KPIs:', err);
+      } finally {
+        setKpiLoading(false);
+      }
+    }
+    loadKpis();
+  }, [review.id]);
+
+  function setKpiScore(kpiId, value) {
+    setKpiScores((prev) => ({ ...prev, [kpiId]: value }));
+  }
+
+  function setKpiComment(kpiId, value) {
+    setKpiComments((prev) => ({ ...prev, [kpiId]: value }));
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
     try {
+      // Build kpi_scores array from kpi state
+      const kpiScoresPayload = kpis.map((kpi) => ({
+        id: kpi.id,
+        appraiser_score: kpiScores[kpi.id] !== '' ? Number(kpiScores[kpi.id]) : null,
+        comments: kpiComments[kpi.id] || '',
+      })).filter((k) => k.appraiser_score !== null);
+
       await evaluationService.submitReview(review.id, {
         appraiser_score: Number(form.appraiser_score),
         appraiser_comments: form.appraiser_comments,
+        kpi_scores: kpiScoresPayload,
       });
       onSaved();
     } catch (err) {
@@ -304,11 +350,75 @@ function ReviewAppraisalModal({ review, cycles, onClose, onSaved }) {
           <input value={review.employee_name || ''} disabled />
         </div>
       </div>
-      <div className={styles.field}>
-        <label>Appraiser Score (0-100)</label>
-        <input type="number" min="0" max="100" step="0.01" value={form.appraiser_score} onChange={(e) => setField('appraiser_score', e.target.value)} required />
+
+      {/* KPI Scoring Section */}
+      <div style={{ margin: 'var(--space-md) 0', borderTop: '1px solid var(--border-color)', paddingTop: 'var(--space-md)' }}>
+        <h4 style={{ marginBottom: 'var(--space-sm)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <FaWeight /> KPI Scores
+        </h4>
+        {kpiLoading ? (
+          <p style={{ color: 'var(--text-muted)' }}>Loading KPIs...</p>
+        ) : kpis.length === 0 ? (
+          <p style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No KPIs defined for this employee in this cycle.</p>
+        ) : (
+          <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                  <th style={{ textAlign: 'left', padding: '0.375rem' }}>KPI Description</th>
+                  <th style={{ textAlign: 'center', padding: '0.375rem', width: '60px' }}>Weight</th>
+                  <th style={{ textAlign: 'center', padding: '0.375rem', width: '80px' }}>Self Score</th>
+                  <th style={{ textAlign: 'center', padding: '0.375rem', width: '100px' }}>Appraiser Score</th>
+                  <th style={{ textAlign: 'left', padding: '0.375rem', width: '140px' }}>Comments</th>
+                </tr>
+              </thead>
+              <tbody>
+                {kpis.map((kpi) => (
+                  <tr key={kpi.id} style={{ borderBottom: '1px solid var(--border-color-light)' }}>
+                    <td style={{ padding: '0.375rem', verticalAlign: 'top' }}>
+                      <div><strong>{kpi.description}</strong></div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Target: {kpi.target}</div>
+                    </td>
+                    <td style={{ textAlign: 'center', padding: '0.375rem', verticalAlign: 'middle' }}>{kpi.weight}%</td>
+                    <td style={{ textAlign: 'center', padding: '0.375rem', verticalAlign: 'middle' }}>
+                      <span>{kpi.self_score ?? '—'}</span>
+                    </td>
+                    <td style={{ textAlign: 'center', padding: '0.375rem', verticalAlign: 'middle' }}>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        style={{ width: '80px', padding: '0.25rem' }}
+                        value={kpiScores[kpi.id] ?? ''}
+                        onChange={(e) => setKpiScore(kpi.id, e.target.value)}
+                        placeholder="0-100"
+                      />
+                    </td>
+                    <td style={{ padding: '0.375rem', verticalAlign: 'middle' }}>
+                      <input
+                        type="text"
+                        style={{ width: '130px', padding: '0.25rem', fontSize: '0.8rem' }}
+                        value={kpiComments[kpi.id] ?? ''}
+                        onChange={(e) => setKpiComment(kpi.id, e.target.value)}
+                        placeholder="Comments"
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
-      <div className={styles.field}><label>Appraiser Comments</label><textarea rows={3} value={form.appraiser_comments} onChange={(e) => setField('appraiser_comments', e.target.value)} /></div>
+
+      <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: 'var(--space-md)', marginTop: 'var(--space-md)' }}>
+        <div className={styles.field}>
+          <label>Overall Appraiser Score (0-100)</label>
+          <input type="number" min="0" max="100" step="0.01" value={form.appraiser_score} onChange={(e) => setField('appraiser_score', e.target.value)} required />
+        </div>
+        <div className={styles.field}><label>Appraiser Comments</label><textarea rows={3} value={form.appraiser_comments} onChange={(e) => setField('appraiser_comments', e.target.value)} /></div>
+      </div>
     </FormModal>
   );
 }

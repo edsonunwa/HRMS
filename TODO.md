@@ -1,8 +1,17 @@
-# TODO
+# Department Head Performance Evaluation Flow
 
-## Manpower/HRMS Fix: Positions “department” required error
-- [x] Update `HRMS_FRONTEND/hrms-frontend/src/pages/employees/EmployeeList.jsx` positions tab form to include required `department` field and post it to backend.
-- [x] Ensure dropdown options for departments are loaded for positions modal.
+## Backend Changes
+- [x] Analyze existing codebase
+- [x] Department model already has `head` field (FK to User)
+- [x] `DepartmentEmployeesView` already exists for filtering employees by department
+- [x] `ReviewSubmitView` already exists with department head scope check & HR notification
+- [x] `KPIListCreateView` already filters by department for department heads
+- [x] Enhance `ReviewSubmitView` to accept per-KPI appraiser scores and update KPI records
+- [x] Add endpoint or method to get detailed KPI data for a review (employee + cycle)
 
-- [ ] Run frontend/backend lint/tests (as available) or at least verify build.
-
+## Frontend Changes
+- [x] Enhance `ReviewAppraisalModal` to fetch and display employee KPIs per cycle
+- [x] Add per-KPI scoring inputs in the appraisal modal
+- [x] Pass KPI scores along with the review submission
+- [x] Ensure department head sees only their department employees
+- [x] Test and verify the complete flow

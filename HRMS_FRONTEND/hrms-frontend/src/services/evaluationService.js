@@ -24,4 +24,8 @@ export const evaluationService = {
     const { data } = await api.get('evaluation/department-employees/');
     return data;
   },
+  async getReviewKPIs(reviewId) {
+    const { data } = await api.get(`evaluation/reviews/${reviewId}/kpis/`);
+    return data;
+  },
 };

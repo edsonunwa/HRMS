@@ -10,6 +10,7 @@ from apps.authentication.permissions import IsHROrAdmin, IsDepartmentHeadOrAbove
 from apps.authentication.models import ROLES, User
 from rest_framework.permissions import IsAuthenticated
 from apps.authentication.audit import AuditLogMixin
+from decimal import Decimal
 
 
 class CycleListCreateView(AuditLogMixin, generics.ListCreateAPIView):
@@ -79,6 +80,32 @@ class ReviewDetailView(AuditLogMixin, generics.RetrieveUpdateAPIView):
     permission_classes = [IsAuthenticated]
 
 
+class ReviewKPIsView(APIView):
+    """
+    Returns KPIs for the employee and cycle of a given review.
+    Department heads can only view KPIs for employees in their own department.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        review = generics.get_object_or_404(PerformanceReview, pk=pk)
+        user = request.user
+
+        # Scope check for department heads
+        if user.role == "department_head":
+            profile = user.get_employee_profile()
+            if profile is None or review.employee.department != profile.department:
+                return Response({"detail": "Not allowed."}, status=403)
+        elif user.role == "employee":
+            profile = user.get_employee_profile()
+            if profile is None or review.employee != profile:
+                return Response({"detail": "Not allowed."}, status=403)
+
+        kpis = KPI.objects.filter(employee=review.employee, cycle=review.cycle)
+        serializer = KPISerializer(kpis, many=True)
+        return Response(serializer.data)
+
+
 class ReviewSelfAssessView(AuditLogMixin, APIView):
     """
     Allows an employee to submit self-assessment for their own review.
@@ -111,7 +138,7 @@ class ReviewSelfAssessView(AuditLogMixin, APIView):
 class ReviewSubmitView(AuditLogMixin, APIView):
     """
     Allows department heads / HR / Admin to submit a review with
-    appraiser_score and appraiser_comments.
+    appraiser_score, appraiser_comments, and per-KPI appraiser scores.
     """
     permission_classes = [IsDepartmentHeadOrAbove]
 
@@ -150,6 +177,22 @@ class ReviewSubmitView(AuditLogMixin, APIView):
         review.status = "reviewed"
         review.appraiser = user
         review.save()
+
+        # Update per-KPI appraiser scores if provided
+        kpi_scores = request.data.get("kpi_scores")
+        if kpi_scores and isinstance(kpi_scores, list):
+            for kpi_data in kpi_scores:
+                kpi_id = kpi_data.get("id")
+                kpi_appraiser_score = kpi_data.get("appraiser_score")
+                kpi_comments = kpi_data.get("comments", "")
+                if kpi_id and kpi_appraiser_score is not None:
+                    try:
+                        kpi = KPI.objects.get(id=kpi_id, employee=review.employee, cycle=review.cycle)
+                        kpi.appraiser_score = Decimal(str(kpi_appraiser_score))
+                        kpi.comments = kpi_comments
+                        kpi.save()
+                    except KPI.DoesNotExist:
+                        pass
 
         # Notify HR officers
         hr_users = User.objects.filter(role__in=(ROLES.HR_OFFICER, ROLES.HR_DIRECTOR, ROLES.ADMIN))

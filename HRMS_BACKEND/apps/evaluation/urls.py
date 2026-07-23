@@ -2,7 +2,8 @@ from django.urls import path
 from .views import (
     CycleListCreateView, CycleDetailView,
     KPIListCreateView, KPIDetailView,
-    ReviewListCreateView, ReviewDetailView, ReviewSelfAssessView,
+    ReviewListCreateView, ReviewDetailView, ReviewKPIsView,
+    ReviewSelfAssessView,
     ReviewSubmitView, ReviewApproveView, DepartmentEmployeesView,
     JobEvaluationListCreateView, JobEvaluationDetailView,
 )
@@ -15,6 +16,7 @@ urlpatterns = [
     path("kpis/<int:pk>/",      KPIDetailView.as_view(),               name="kpi_detail"),
     path("reviews/",            ReviewListCreateView.as_view(),        name="review_list"),
     path("reviews/<int:pk>/",   ReviewDetailView.as_view(),            name="review_detail"),
+    path("reviews/<int:pk>/kpis/",   ReviewKPIsView.as_view(),            name="review_kpis"),
     path("reviews/<int:pk>/self-assess/", ReviewSelfAssessView.as_view(),  name="review_self_assess"),
     path("reviews/<int:pk>/submit/",     ReviewSubmitView.as_view(),        name="review_submit"),
     path("reviews/<int:pk>/approve/",     ReviewApproveView.as_view(),      name="review_approve"),
