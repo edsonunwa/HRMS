@@ -2,9 +2,11 @@ from django.urls import path
 from .views import (
     CycleListCreateView, CycleDetailView,
     KPIListCreateView, KPIDetailView,
-    ReviewListCreateView, ReviewDetailView,
+    ReviewListCreateView, ReviewDetailView, ReviewSelfAssessView,
+    ReviewSubmitView, ReviewApproveView, DepartmentEmployeesView,
     JobEvaluationListCreateView, JobEvaluationDetailView,
 )
+from .dashboard import EvaluationDashboardAPIView
 
 urlpatterns = [
     path("cycles/",             CycleListCreateView.as_view(),         name="cycle_list"),
@@ -13,6 +15,11 @@ urlpatterns = [
     path("kpis/<int:pk>/",      KPIDetailView.as_view(),               name="kpi_detail"),
     path("reviews/",            ReviewListCreateView.as_view(),        name="review_list"),
     path("reviews/<int:pk>/",   ReviewDetailView.as_view(),            name="review_detail"),
+    path("reviews/<int:pk>/self-assess/", ReviewSelfAssessView.as_view(),  name="review_self_assess"),
+    path("reviews/<int:pk>/submit/",     ReviewSubmitView.as_view(),        name="review_submit"),
+    path("reviews/<int:pk>/approve/",     ReviewApproveView.as_view(),      name="review_approve"),
+    path("department-employees/", DepartmentEmployeesView.as_view(), name="department_employees"),
     path("job-evaluations/",    JobEvaluationListCreateView.as_view(), name="job_eval_list"),
     path("job-evaluations/<int:pk>/", JobEvaluationDetailView.as_view(), name="job_eval_detail"),
+    path("dashboard/",          EvaluationDashboardAPIView.as_view(),  name="eval_dashboard"),
 ]
