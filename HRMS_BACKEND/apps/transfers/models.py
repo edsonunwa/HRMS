@@ -5,7 +5,7 @@ from apps.employees.models import Employee, Department, Position
 
 class Transfer(models.Model):
     TYPE   = [("transfer","Transfer"),("rotation","Rotation"),("secondment","Secondment"),("promotion","Promotion")]
-    STATUS = [("pending","Pending"),("approved","Approved"),("rejected","Rejected"),("completed","Completed"),("cancelled","Cancelled")]
+    STATUS = [("pending","Pending"),("approved","Approved"),("rejected","Rejected"),("completed","Completed")]
 
     employee          = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name="transfers")
     transfer_type     = models.CharField(max_length=20, choices=TYPE, default="transfer")

@@ -17,6 +17,23 @@ class BranchListCreateView(generics.ListCreateAPIView):
     queryset = Branch.objects.all()
     serializer_class = BranchSerializer
     permission_classes = [IsAuthenticated]
+    
+    
+class BranchDetailView(AuditLogMixin, generics.RetrieveUpdateDestroyAPIView):
+    queryset           = Branch.objects.all()
+    serializer_class   = BranchSerializer
+    permission_classes = [IsHROrAdmin]
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 
 
 class DepartmentListCreateView(AuditLogMixin, generics.ListCreateAPIView):

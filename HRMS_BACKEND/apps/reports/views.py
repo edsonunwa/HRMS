@@ -176,7 +176,7 @@ class TransferSummaryView(APIView):
             "by_status":        list(qs.values("status").annotate(count=Count("id"))),
             "pending":          qs.filter(status="pending").count(),
             "approved":         qs.filter(status="approved").count(),
-            "completed":        qs.filter(status="completed").count(),
+            "cancelled":        qs.filter(status="cancelled").count(),
         })
 
 

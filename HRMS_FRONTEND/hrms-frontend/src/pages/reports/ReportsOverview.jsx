@@ -155,7 +155,7 @@ function TransfersSummaryCard() {
         { label: 'Total', value: data.total },
         { label: 'Pending', value: data.pending },
         { label: 'Approved', value: data.approved },
-        { label: 'Completed', value: data.completed },
+        { label: 'Cancelled', value: data.cancelled },
       ]} />
       <div className={styles.sectionTitle}>By Type</div>
       <BarChart data={data.by_type} labelKey="transfer_type" countKey="count" />

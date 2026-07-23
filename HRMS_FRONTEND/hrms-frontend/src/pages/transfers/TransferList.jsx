@@ -46,6 +46,14 @@ function TransferFormModal({ branches, departments, positions, profile, onClose,
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  function handleToDepartmentChange(e) {
+    setForm((f) => ({ ...f, to_department: e.target.value, to_position: '' }));
+  }
+
+  const filteredToPositions = positions.filter(
+    (p) => !form.to_department || String(p.department?.id ?? p.department) === String(form.to_department)
+  );
+
   const fromBranchName = resolveName(profile?.branch, branches, 'name');
   const fromDeptName = resolveName(profile?.department, departments, 'name');
   const fromPositionTitle = resolveName(profile?.position, positions, 'title');
@@ -63,8 +71,7 @@ function TransferFormModal({ branches, departments, positions, profile, onClose,
     try {
       const payload = { ...form };
 
-      if (!payload.to_position) delete payload.to_position;
-      if (!showEndDate || !payload.end_date) delete payload.end_date;
+      if (!showEndDate) delete payload.end_date;
 
       await transfersService.create(payload);
       onSaved();
@@ -150,7 +157,7 @@ function TransferFormModal({ branches, departments, positions, profile, onClose,
           <label>To Department</label>
           <select
             value={form.to_department}
-            onChange={(e) => setField('to_department', e.target.value)}
+            onChange={handleToDepartmentChange}
             required
           >
             <option value="">Select department</option>
@@ -165,10 +172,14 @@ function TransferFormModal({ branches, departments, positions, profile, onClose,
 
       <div className={styles.row2}>
         <div className={styles.field}>
-          <label>To Position (optional)</label>
-          <select value={form.to_position} onChange={(e) => setField('to_position', e.target.value)}>
+          <label>To Position</label>
+          <select
+            value={form.to_position}
+            onChange={(e) => setField('to_position', e.target.value)}
+            required
+          >
             <option value="">Select position</option>
-            {positions.map((p) => (
+            {filteredToPositions.map((p) => (
               <option key={p.id} value={p.id}>{p.title}</option>
             ))}
           </select>
@@ -182,6 +193,7 @@ function TransferFormModal({ branches, departments, positions, profile, onClose,
             type="date"
             value={form.end_date}
             onChange={(e) => setField('end_date', e.target.value)}
+            required
           />
         </div>
       )}
@@ -221,6 +233,14 @@ function TransferRecordFormModal({ branches, departments, positions, onClose, on
   function setField(key, value) {
     setForm((f) => ({ ...f, [key]: value }));
   }
+
+  function handleToDepartmentChange(e) {
+    setForm((f) => ({ ...f, to_department: e.target.value, to_position: '' }));
+  }
+
+  const filteredToPositions = positions.filter(
+    (p) => !form.to_department || String(p.department?.id ?? p.department) === String(form.to_department)
+  );
 
   useEffect(() => {
     if (!employeeQuery || employeeQuery.length < 2) {
@@ -286,8 +306,7 @@ function TransferRecordFormModal({ branches, departments, positions, onClose, on
     try {
       const payload = { ...form, employee: selectedEmployee.id, is_hr_record: true };
 
-      if (!payload.to_position) delete payload.to_position;
-      if (!showEndDate || !payload.end_date) delete payload.end_date;
+      if (!showEndDate) delete payload.end_date;
 
       await transfersService.create(payload);
       onSaved();
@@ -410,7 +429,7 @@ function TransferRecordFormModal({ branches, departments, positions, onClose, on
           <label>To Department</label>
           <select
             value={form.to_department}
-            onChange={(e) => setField('to_department', e.target.value)}
+            onChange={handleToDepartmentChange}
             required
           >
             <option value="">Select department</option>
@@ -425,10 +444,14 @@ function TransferRecordFormModal({ branches, departments, positions, onClose, on
 
       <div className={styles.row2}>
         <div className={styles.field}>
-          <label>To Position (optional)</label>
-          <select value={form.to_position} onChange={(e) => setField('to_position', e.target.value)}>
+          <label>To Position</label>
+          <select
+            value={form.to_position}
+            onChange={(e) => setField('to_position', e.target.value)}
+            required
+          >
             <option value="">Select position</option>
-            {positions.map((p) => (
+            {filteredToPositions.map((p) => (
               <option key={p.id} value={p.id}>{p.title}</option>
             ))}
           </select>
@@ -442,6 +465,7 @@ function TransferRecordFormModal({ branches, departments, positions, onClose, on
             type="date"
             value={form.end_date}
             onChange={(e) => setField('end_date', e.target.value)}
+            required
           />
         </div>
       )}
@@ -455,6 +479,100 @@ function TransferRecordFormModal({ branches, departments, positions, onClose, on
           required
         />
       </div>
+    </FormModal>
+  );
+}
+
+function TransferDetailModal({ transfer, onClose }) {
+  const isHrCreated = transfer.is_hr_record && transfer.status === 'approved';
+
+  function handleClose(e) {
+    e.preventDefault();
+    onClose();
+  }
+
+  return (
+    <FormModal
+      title="Transfer Details"
+      onClose={onClose}
+      onSubmit={handleClose}
+      submitting={false}
+      submitLabel="Close"
+    >
+      <div className={styles.summaryBox}>
+        <div className={styles.field}>
+          <label>Employee</label>
+          <div className={styles.summaryValue}>
+            {transfer.employee_id} — {transfer.employee_name}
+          </div>
+        </div>
+
+        <div className={styles.field}>
+          <label>From</label>
+          <div className={styles.summaryValue}>
+            {formatPlacement(transfer.from_branch_name, transfer.from_dept_name, transfer.from_position_title)}
+          </div>
+        </div>
+
+        <div className={styles.field}>
+          <label>To</label>
+          <div className={styles.summaryValue}>
+            {formatPlacement(transfer.to_branch_name, transfer.to_dept_name, transfer.to_position_title)}
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.row2}>
+        <div className={styles.field}>
+          <label>Type</label>
+          <div className={styles.summaryValue}>{transfer.transfer_type}</div>
+        </div>
+
+        <div className={styles.field}>
+          <label>Effective Date</label>
+          <div className={styles.summaryValue}>{transfer.effective_date}</div>
+        </div>
+      </div>
+
+      {transfer.end_date && (
+        <div className={styles.field}>
+          <label>End Date</label>
+          <div className={styles.summaryValue}>{transfer.end_date}</div>
+        </div>
+      )}
+
+      <div className={styles.field}>
+        <label>Status</label>
+        <div className={styles.statusCell}>
+          <StatusBadge status={transfer.status} label={isHrCreated ? 'Created' : undefined} />
+          {(transfer.status === 'approved' || transfer.status === 'rejected') && transfer.approved_by_name && (
+            <span className={styles.statusNote}>
+              {isHrCreated ? 'Created' : (transfer.status === 'approved' ? 'Approved' : 'Rejected')} by{' '}
+              {transfer.approved_by_role ? `${transfer.approved_by_role} ` : ''}
+              {transfer.approved_by_name}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {transfer.initiated_by_name && (
+        <div className={styles.field}>
+          <label>Initiated By</label>
+          <div className={styles.summaryValue}>{transfer.initiated_by_name}</div>
+        </div>
+      )}
+
+      <div className={styles.field}>
+        <label>Reason</label>
+        <div className={styles.summaryValue}>{transfer.reason || '—'}</div>
+      </div>
+
+      {transfer.approval_comment && (
+        <div className={styles.field}>
+          <label>Comment</label>
+          <div className={styles.summaryValue}>{transfer.approval_comment}</div>
+        </div>
+      )}
     </FormModal>
   );
 }
@@ -486,13 +604,13 @@ export default function TransferList() {
   const [modalOpen, setModalOpen] = useState(false);
   const [recordModalOpen, setRecordModalOpen] = useState(false);
   const [myProfile, setMyProfile] = useState(null);
+  const [viewingRow, setViewingRow] = useState(null);
 
   useEffect(() => {
-    if (!modalOpen) return;
     employeesService.me()
       .then(setMyProfile)
       .catch(() => setMyProfile(null));
-  }, [modalOpen]);
+  }, []);
 
   function handleSaved() {
     setModalOpen(false);
@@ -580,7 +698,7 @@ export default function TransferList() {
           <>
             <button
               className={`${styles.iconBtn} ${styles.successBtn}`}
-              onClick={() => handleDecision(row, 'approved')}
+              onClick={(e) => { e.stopPropagation(); handleDecision(row, 'approved'); }}
               title="Approve"
             >
               <FiCheck />
@@ -588,7 +706,7 @@ export default function TransferList() {
 
             <button
               className={`${styles.iconBtn} ${styles.dangerBtn}`}
-              onClick={() => handleDecision(row, 'rejected')}
+              onClick={(e) => { e.stopPropagation(); handleDecision(row, 'rejected'); }}
               title="Reject"
             >
               <FiX />
@@ -599,7 +717,7 @@ export default function TransferList() {
         {canCancel && (
           <button
             className={styles.iconBtn}
-            onClick={() => handleCancel(row)}
+            onClick={(e) => { e.stopPropagation(); handleCancel(row); }}
             title="Cancel request"
           >
             <FiSlash />
@@ -612,6 +730,8 @@ export default function TransferList() {
   const requestsRows = canApprove ? filtered.filter((r) => !r.is_hr_record) : filtered;
   const recordsRows = canApprove ? filtered.filter((r) => r.is_hr_record) : [];
 
+  const hasPendingOwnRequest = !canApprove && filtered.some((r) => r.status === 'pending');
+
   return (
     <DashboardLayout portalLabel="Transfers & Rotation" searchPlaceholder="Search transfers…">
       <div className={styles.header}>
@@ -623,7 +743,13 @@ export default function TransferList() {
         </div>
 
         {!canApprove && (
-          <button className={styles.btnPrimary} onClick={() => setModalOpen(true)}>
+          <button
+            className={styles.btnPrimary}
+            onClick={() => setModalOpen(true)}
+            disabled={hasPendingOwnRequest}
+            title={hasPendingOwnRequest ? 'You already have a pending transfer request. Wait for it to be resolved or cancel it first.' : undefined}
+            style={hasPendingOwnRequest ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
+          >
             <FiPlus /> New Transfer
           </button>
         )}
@@ -636,6 +762,7 @@ export default function TransferList() {
           columns={columns}
           rows={requestsRows}
           loading={loading}
+          onRowClick={(row) => setViewingRow(row)}
           actions={renderActions}
         />
       </div>
@@ -655,6 +782,7 @@ export default function TransferList() {
             columns={columns}
             rows={recordsRows}
             loading={loading}
+            onRowClick={(row) => setViewingRow(row)}
             actions={renderActions}
           />
         </div>
@@ -678,6 +806,13 @@ export default function TransferList() {
           branches={branchesRes.data}
           onClose={() => setRecordModalOpen(false)}
           onSaved={handleRecordSaved}
+        />
+      )}
+
+      {viewingRow && (
+        <TransferDetailModal
+          transfer={viewingRow}
+          onClose={() => setViewingRow(null)}
         />
       )}
     </DashboardLayout>
