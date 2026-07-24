@@ -96,8 +96,9 @@ export default function EmployeeDetail() {
               <Field label="Employment Status" value={<StatusBadge status={employee.employment_status} />} />
               <Field label="Contract Type" value={employee.contract_type} />
               <Field label="Join Date" value={employee.join_date} />
-              <Field label="Confirmation Date" value={employee.confirmation_date || '—'} />
-              <Field label="Termination Date" value={employee.termination_date || '—'} />
+              {employee.employment_status === 'terminated' && (
+                <Field label="Termination Date" value={employee.termination_date || '—'} />
+              )}
               <Field label="Basic Salary" value={employee.basic_salary ? `UGX ${Number(employee.basic_salary).toLocaleString()}` : '—'} />
             </div>
 

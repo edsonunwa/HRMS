@@ -17,6 +17,32 @@ const GENDER_OPTIONS = [{ value: 'M', label: 'Male' }, { value: 'F', label: 'Fem
 const EMPLOYMENT_STATUS_OPTIONS = ['active', 'on_leave', 'suspended', 'probation', 'terminated', 'retired'];
 const CONTRACT_TYPE_OPTIONS = ['permanent', 'contract', 'casual', 'graduate', 'intern'];
 
+const FIELD_LABELS = {
+  national_id: 'National ID',
+  tin_number: 'TIN Number',
+  nssf_number: 'NSSF Number',
+};
+
+// Turns a DRF error payload like {"success":false,"errors":{"national_id":["..."]}}
+// into a readable sentence instead of a raw JSON dump.
+function formatFormError(err) {
+  const data = err.response?.data;
+  if (!data) return 'Save failed.';
+  const errors = data.errors || data;
+  if (typeof errors === 'string') return errors;
+  if (Array.isArray(errors)) return errors.join(' ');
+  if (typeof errors === 'object') {
+    return Object.entries(errors)
+      .map(([field, msgs]) => {
+        const text = Array.isArray(msgs) ? msgs.join(' ') : msgs;
+        const label = FIELD_LABELS[field] || field.replace(/_/g, ' ');
+        return `${label}: ${text}`;
+      })
+      .join(' ');
+  }
+  return 'Save failed.';
+}
+
 /* ---------- Generic simple-resource tab (Departments / Grades / Positions) ---------- */
 
 function GenericFormFields({ fields, form, setField }) {
@@ -148,9 +174,9 @@ function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, pos
     first_name: '', last_name: '', email: '', phone: '',
     // Employee fields
     department_id: '', position_id: '', grade_id: '', supervisor: '',
-    gender: 'M', date_of_birth: '', national_id: '', join_date: '',
+    gender: 'M', date_of_birth: '', national_id: 'CM', join_date: '',
     employment_status: 'active', contract_type: 'permanent', basic_salary: '',
-    confirmation_date: '', termination_date: '',
+    termination_date: '',
     tin_number: '', nssf_number: '', nationality: 'Ugandan',
     address: '', next_of_kin: '', next_of_kin_contact: '', branch: '',
   });
@@ -161,12 +187,34 @@ function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, pos
     (p) => !form.department_id || String(p.department?.id ?? p.department) === String(form.department_id)
   );
 
+  const showTerminationDate = form.employment_status === 'terminated';
+
   function setField(key, value) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
   function handleDepartmentChange(e) {
     setForm((f) => ({ ...f, department_id: e.target.value, position_id: '' }));
+  }
+
+  function handleEmploymentStatusChange(e) {
+    const value = e.target.value;
+    setForm((f) => ({
+      ...f,
+      employment_status: value,
+      termination_date: value === 'terminated' ? f.termination_date : '',
+    }));
+  }
+
+  function handleGenderChange(e) {
+    const value = e.target.value;
+    const prefix = value === 'M' ? 'CM' : value === 'F' ? 'CF' : '';
+    setForm((f) => {
+      // Only auto-set the prefix if National ID is still empty, so we never
+      // overwrite something the user has already typed (e.g. while editing).
+      if (f.national_id) return { ...f, gender: value };
+      return { ...f, gender: value, national_id: prefix };
+    });
   }
 
   async function handleSubmit(e) {
@@ -187,8 +235,7 @@ function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, pos
         grade_id: form.grade_id || undefined,
         join_date: form.join_date,
         date_of_birth: form.date_of_birth || undefined,
-        confirmation_date: form.confirmation_date || undefined,
-        termination_date: form.termination_date || undefined,
+        termination_date: showTerminationDate ? (form.termination_date || undefined) : undefined,
         employment_status: form.employment_status,
         contract_type: form.contract_type,
         basic_salary: form.basic_salary || undefined,
@@ -215,7 +262,7 @@ function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, pos
       }
       onSaved();
     } catch (err) {
-      setError(err.response?.data ? JSON.stringify(err.response.data) : 'Save failed.');
+      setError(formatFormError(err));
     } finally {
       setSubmitting(false);
     }
@@ -267,7 +314,7 @@ function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, pos
         </div>
         <div className={styles.field}>
           <label>Gender</label>
-          <select value={form.gender} onChange={(e) => setField('gender', e.target.value)}required>
+          <select value={form.gender} onChange={handleGenderChange}required>
             {GENDER_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>
@@ -323,7 +370,7 @@ function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, pos
       <div className={styles.row2}>
         <div className={styles.field}>
           <label>Employment Status</label>
-          <select value={form.employment_status} onChange={(e) => setField('employment_status', e.target.value)}required>
+          <select value={form.employment_status} onChange={handleEmploymentStatusChange}required>
             {EMPLOYMENT_STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
           </select>
         </div>
@@ -338,22 +385,28 @@ function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, pos
         <label>Basic Salary</label>
         <input type="number" step="0.01" value={form.basic_salary} onChange={(e) => setField('basic_salary', e.target.value)} />
       </div>
-      <div className={styles.row2}>
-        <div className={styles.field}>
-          <label>Confirmation Date</label>
-          <input type="date" value={form.confirmation_date} onChange={(e) => setField('confirmation_date', e.target.value)}required />
-        </div>
+      {showTerminationDate && (
         <div className={styles.field}>
           <label>Termination Date</label>
-          <input type="date" value={form.termination_date} onChange={(e) => setField('termination_date', e.target.value)} />
+          <input type="date" value={form.termination_date} onChange={(e) => setField('termination_date', e.target.value)} required />
         </div>
-      </div>
+      )}
 
       <div className={styles.sectionLabel}>Personal Details</div>
       <div className={styles.row2}>
         <div className={styles.field}>
           <label>National ID</label>
-          <input value={form.national_id} onChange={(e) => setField('national_id', e.target.value)}required />
+          <input
+            value={form.national_id}
+            onChange={(e) => setField('national_id', e.target.value.toUpperCase())}
+            maxLength={14}
+            pattern="[A-Z0-9]{14}"
+            title="14 characters: uppercase letters and digits (e.g. CM1234567890AB)"
+            required
+          />
+          <small style={{ display: 'block', marginTop: '4px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+            14 characters — starts with CM (male) or CF (female), followed by 12 digits/letters. e.g. CM1234567890AB
+          </small>
         </div>
         <div className={styles.field}>
           <label>Nationality</label>
@@ -363,11 +416,31 @@ function EmployeeFormModal({ editing, onClose, onSaved, departments, grades, pos
       <div className={styles.row2}>
         <div className={styles.field}>
           <label>TIN Number</label>
-          <input value={form.tin_number} onChange={(e) => setField('tin_number', e.target.value)}required />
+          <input
+            value={form.tin_number}
+            onChange={(e) => setField('tin_number', e.target.value)}
+            maxLength={10}
+            pattern="[0-9]{10}"
+            title="Exactly 10 digits"
+            required
+          />
+          <small style={{ display: 'block', marginTop: '4px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+            Exactly 10 digits
+          </small>
         </div>
         <div className={styles.field}>
           <label>NSSF Number</label>
-          <input value={form.nssf_number} onChange={(e) => setField('nssf_number', e.target.value)}required />
+          <input
+            value={form.nssf_number}
+            onChange={(e) => setField('nssf_number', e.target.value)}
+            maxLength={10}
+            pattern="[0-9]{10}"
+            title="Exactly 10 digits"
+            required
+          />
+          <small style={{ display: 'block', marginTop: '4px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+            Exactly 10 digits
+          </small>
         </div>
       </div>
       <div className={styles.field}>
