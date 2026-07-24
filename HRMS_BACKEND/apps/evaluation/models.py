@@ -36,7 +36,14 @@ class KPI(models.Model):
 
 
 class PerformanceReview(models.Model):
-    STATUS = [("pending","Pending"),("self_assessed","Self Assessed"),("reviewed","Reviewed"),("moderated","Moderated"),("approved","Approved")]
+    STATUS = [
+        ("pending","Pending"),
+        ("self_assessed","Self Assessed"),
+        ("pending_hr_review","Pending HR Review"),
+        ("reviewed","Reviewed"),
+        ("moderated","Moderated"),
+        ("approved","Approved"),
+    ]
 
     cycle         = models.ForeignKey(PerformanceCycle, on_delete=models.CASCADE, related_name="reviews")
     employee      = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name="reviews")
@@ -48,6 +55,22 @@ class PerformanceReview(models.Model):
     status        = models.CharField(max_length=20, choices=STATUS, default="pending")
     created_at    = models.DateTimeField(auto_now_add=True)
     updated_at    = models.DateTimeField(auto_now=True)
+
+    # Manager ratings (1-5 scale)
+    communication_score   = models.PositiveSmallIntegerField(null=True, blank=True, help_text="Manager rating: Communication (1-5)")
+    productivity_score    = models.PositiveSmallIntegerField(null=True, blank=True, help_text="Manager rating: Productivity (1-5)")
+    innovation_score      = models.PositiveSmallIntegerField(null=True, blank=True, help_text="Manager rating: Innovation (1-5)")
+    manager_comment       = models.TextField(blank=True, help_text="Manager's overall comment on the employee")
+
+    # Self ratings (1-5 scale)
+    self_communication_score = models.PositiveSmallIntegerField(null=True, blank=True, help_text="Self rating: Communication (1-5)")
+    self_productivity_score  = models.PositiveSmallIntegerField(null=True, blank=True, help_text="Self rating: Productivity (1-5)")
+    self_innovation_score    = models.PositiveSmallIntegerField(null=True, blank=True, help_text="Self rating: Innovation (1-5)")
+    self_comment             = models.TextField(blank=True, help_text="Employee's self-rating comment")
+
+    # Department Head review
+    hod_comments             = models.TextField(blank=True, help_text="Department head's comments when confirming or sending back for revision")
+    hod_reviewed_at          = models.DateTimeField(null=True, blank=True, help_text="Timestamp when the department head last reviewed the self-assessment")
 
     class Meta:
         db_table = "performance_reviews"

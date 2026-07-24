@@ -28,7 +28,66 @@ class PerformanceReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model  = PerformanceReview
         fields = "__all__"
-        read_only_fields = ["overall_score", "grade", "status", "created_at", "appraiser", "appraiser_score", "appraiser_comments"]
+        read_only_fields = ["overall_score", "grade", "status", "created_at", "appraiser", "appraiser_score", "appraiser_comments", "hod_comments", "hod_reviewed_at"]
+
+
+class SelfRatingSerializer(serializers.ModelSerializer):
+    """Serializer for employee self-rating on Communication, Productivity, Innovation."""
+    employee_name = serializers.ReadOnlyField(source="employee.full_name")
+    cycle_name    = serializers.ReadOnlyField(source="cycle.name")
+
+    class Meta:
+        model  = PerformanceReview
+        fields = [
+            "id", "employee", "employee_name", "cycle", "cycle_name",
+            "self_communication_score", "self_productivity_score", "self_innovation_score",
+            "self_comment", "status", "hod_comments",
+        ]
+        read_only_fields = ["status", "hod_comments"]
+
+    def validate_self_communication_score(self, value):
+        if value is not None and not (1 <= value <= 5):
+            raise serializers.ValidationError("Score must be between 1 and 5.")
+        return value
+
+    def validate_self_productivity_score(self, value):
+        if value is not None and not (1 <= value <= 5):
+            raise serializers.ValidationError("Score must be between 1 and 5.")
+        return value
+
+    def validate_self_innovation_score(self, value):
+        if value is not None and not (1 <= value <= 5):
+            raise serializers.ValidationError("Score must be between 1 and 5.")
+        return value
+
+
+class ManagerRatingSerializer(serializers.ModelSerializer):
+    """Serializer for department head to submit manager ratings."""
+    employee_name = serializers.ReadOnlyField(source="employee.full_name")
+    cycle_name    = serializers.ReadOnlyField(source="cycle.name")
+
+    class Meta:
+        model  = PerformanceReview
+        fields = [
+            "id", "employee", "employee_name", "cycle", "cycle_name",
+            "communication_score", "productivity_score", "innovation_score",
+            "manager_comment",
+        ]
+
+    def validate_communication_score(self, value):
+        if value is not None and not (1 <= value <= 5):
+            raise serializers.ValidationError("Score must be between 1 and 5.")
+        return value
+
+    def validate_productivity_score(self, value):
+        if value is not None and not (1 <= value <= 5):
+            raise serializers.ValidationError("Score must be between 1 and 5.")
+        return value
+
+    def validate_innovation_score(self, value):
+        if value is not None and not (1 <= value <= 5):
+            raise serializers.ValidationError("Score must be between 1 and 5.")
+        return value
 
 
 class JobEvaluationSerializer(serializers.ModelSerializer):

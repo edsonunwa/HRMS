@@ -1,11 +1,12 @@
 from django.shortcuts import get_object_or_404
 from django.apps import apps
+from django.utils import timezone
 from rest_framework import generics, filters
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import PerformanceCycle, KPI, PerformanceReview, JobEvaluation
-from .serializers import PerformanceCycleSerializer, KPISerializer, PerformanceReviewSerializer, JobEvaluationSerializer
+from .serializers import PerformanceCycleSerializer, KPISerializer, PerformanceReviewSerializer, JobEvaluationSerializer, ManagerRatingSerializer, SelfRatingSerializer
 from apps.authentication.permissions import IsHROrAdmin, IsDepartmentHeadOrAbove
 from apps.authentication.models import ROLES, User
 from rest_framework.permissions import IsAuthenticated
@@ -131,14 +132,14 @@ class ReviewSelfAssessView(AuditLogMixin, APIView):
         review.status = "self_assessed"
         review.save()
 
-        serializer = self.get_serializer(review)
+        serializer = PerformanceReviewSerializer(review)
         return Response(serializer.data, status=200)
 
 
-class ReviewSubmitView(AuditLogMixin, APIView):
+class ReviewConfirmView(AuditLogMixin, APIView):
     """
-    Allows department heads / HR / Admin to submit a review with
-    appraiser_score, appraiser_comments, and per-KPI appraiser scores.
+    Allows department heads to confirm (approve) a self-assessment and send it to HR,
+    or send it back to the employee for revision.
     """
     permission_classes = [IsDepartmentHeadOrAbove]
 
@@ -146,11 +147,66 @@ class ReviewSubmitView(AuditLogMixin, APIView):
         review = generics.get_object_or_404(PerformanceReview, pk=pk)
         user = request.user
 
+        # Only department heads can confirm/reject self-assessments
+        if user.role != "department_head":
+            return Response({"detail": "Only department heads can perform this action."}, status=403)
+
         # Department head review scope check
-        if user.role == "department_head":
-            profile = user.get_employee_profile()
-            if profile is None or review.employee.department != profile.department:
-                return Response({"detail": "Not allowed."}, status=403)
+        profile = user.get_employee_profile()
+        if profile is None or review.employee.department != profile.department:
+            return Response({"detail": "Not allowed."}, status=403)
+
+        action = request.data.get("action")  # "confirm" or "reject"
+        if action not in ("confirm", "reject"):
+            return Response({"action": "Must be 'confirm' or 'reject'."}, status=400)
+
+        # Only allow confirmation of self-assessed reviews
+        if review.status != "self_assessed":
+            return Response({"detail": f"Cannot confirm review with status '{review.status}'. Review must be self-assessed."}, status=400)
+
+        # Capture department head comments (required when rejecting, optional when confirming)
+        hod_comments = request.data.get("hod_comments", "")
+        review.hod_comments = hod_comments
+        review.hod_reviewed_at = timezone.now()
+
+        if action == "confirm":
+            review.status = "pending_hr_review"
+            review.appraiser = user  # Set the department head as the appraiser
+        else:  # reject
+            review.status = "pending"
+
+        review.save()
+
+        # Notify the employee
+        Notification = apps.get_model("notifications", "Notification")
+        if action == "confirm":
+            message = f"Your self assessment for {review.cycle.name} has been confirmed and sent to HR by {user.full_name}."
+        else:
+            message = f"Your self assessment for {review.cycle.name} has been sent back for revision by {user.full_name}."
+            if hod_comments:
+                message += f" Feedback: {hod_comments}"
+        Notification.objects.create(
+            recipient=review.employee.user,
+            title="Self Assessment Reviewed",
+            message=message,
+            category="evaluation",
+            link=f"/evaluation/reviews/{review.id}/",
+        )
+
+        serializer = PerformanceReviewSerializer(review)
+        return Response(serializer.data, status=200)
+
+
+class ReviewSubmitView(AuditLogMixin, APIView):
+    """
+    Allows HR / Admin to submit the final appraisal with
+    appraiser_score, appraiser_comments, and per-KPI appraiser scores.
+    """
+    permission_classes = [IsHROrAdmin]
+
+    def post(self, request, pk):
+        review = generics.get_object_or_404(PerformanceReview, pk=pk)
+        user = request.user
 
         score = request.data.get("appraiser_score")
         comments = request.data.get("appraiser_comments", "")
@@ -175,7 +231,6 @@ class ReviewSubmitView(AuditLogMixin, APIView):
             review.grade = "D"
 
         review.status = "reviewed"
-        review.appraiser = user
         review.save()
 
         # Update per-KPI appraiser scores if provided
@@ -241,6 +296,212 @@ class ReviewApproveView(AuditLogMixin, APIView):
             )
 
         serializer = self.get_serializer(review)
+        return Response(serializer.data, status=200)
+
+
+class ManagerRatingListCreateView(AuditLogMixin, APIView):
+    """
+    List/Create manager ratings for employees in the department head's department.
+    Department heads can view and rate employees in their own department.
+    """
+    permission_classes = [IsDepartmentHeadOrAbove]
+
+    def get(self, request):
+        """List department employees with their manager ratings (if any)."""
+        user = request.user
+        from apps.employees.models import Employee
+        from .models import PerformanceReview
+
+        # Get employees scoped to the user
+        if user.role in ("hr_officer", "hr_director", "admin"):
+            employees = Employee.objects.select_related("user", "department", "position").all()
+        elif user.role == "department_head":
+            profile = user.get_employee_profile()
+            if profile is None:
+                return Response([])
+            employees = Employee.objects.select_related("user", "department", "position").filter(
+                department=profile.department
+            )
+        else:
+            return Response([], status=200)
+
+        # Get the latest active cycle for context
+        active_cycle = PerformanceCycle.objects.filter(is_active=True).first()
+
+        data = []
+        for emp in employees:
+            # Try to find an existing performance review for this employee in the active cycle
+            review = None
+            if active_cycle:
+                review = PerformanceReview.objects.filter(
+                    employee=emp, cycle=active_cycle
+                ).first()
+
+            position_title = emp.position.title if emp.position else "—"
+
+            if review:
+                data.append({
+                    "id": review.id,
+                    "employee_id": emp.id,
+                    "employee_name": emp.full_name,
+                    "position": position_title,
+                    "cycle_name": active_cycle.name if active_cycle else "",
+                    "communication_score": review.communication_score,
+                    "productivity_score": review.productivity_score,
+                    "innovation_score": review.innovation_score,
+                    "manager_comment": review.manager_comment,
+                })
+            else:
+                # Still show the employee, with no ratings yet
+                data.append({
+                    "id": None,
+                    "employee_id": emp.id,
+                    "employee_name": emp.full_name,
+                    "position": position_title,
+                    "cycle_name": active_cycle.name if active_cycle else "No active cycle",
+                    "communication_score": None,
+                    "productivity_score": None,
+                    "innovation_score": None,
+                    "manager_comment": "",
+                })
+
+        return Response(data)
+
+    def post(self, request):
+        """Submit or update manager ratings for an employee."""
+        user = request.user
+        employee_id = request.data.get("employee_id")
+        if not employee_id:
+            return Response({"employee_id": "This field is required."}, status=400)
+
+        from apps.employees.models import Employee
+        try:
+            employee = Employee.objects.get(id=employee_id)
+        except Employee.DoesNotExist:
+            return Response({"detail": "Employee not found."}, status=404)
+
+        # Scope check for department heads
+        if user.role == "department_head":
+            profile = user.get_employee_profile()
+            if profile is None or employee.department != profile.department:
+                return Response({"detail": "Not allowed."}, status=403)
+
+        # Find or create a performance review for this employee in the active cycle
+        active_cycle = PerformanceCycle.objects.filter(is_active=True).first()
+        if not active_cycle:
+            return Response({"detail": "No active performance cycle found."}, status=400)
+
+        review, created = PerformanceReview.objects.get_or_create(
+            employee=employee,
+            cycle=active_cycle,
+            defaults={"status": "pending"}
+        )
+
+        # Update the rating fields
+        communication_score = request.data.get("communication_score")
+        productivity_score = request.data.get("productivity_score")
+        innovation_score = request.data.get("innovation_score")
+        manager_comment = request.data.get("manager_comment", "")
+
+        if communication_score is not None:
+            review.communication_score = communication_score
+        if productivity_score is not None:
+            review.productivity_score = productivity_score
+        if innovation_score is not None:
+            review.innovation_score = innovation_score
+        review.manager_comment = manager_comment
+        review.save()
+
+        return Response({
+            "id": review.id,
+            "employee_id": employee.id,
+            "employee_name": employee.full_name,
+            "cycle_name": active_cycle.name,
+            "communication_score": review.communication_score,
+            "productivity_score": review.productivity_score,
+            "innovation_score": review.innovation_score,
+            "manager_comment": review.manager_comment,
+        }, status=200)
+
+
+class SelfRatingView(AuditLogMixin, APIView):
+    """
+    Allows employees to view and submit their self-ratings.
+    Only the employee themselves can access their own self-rating.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Get the current employee's self-rating for the active cycle."""
+        user = request.user
+        profile = user.get_employee_profile()
+        if profile is None:
+            return Response({"detail": "No employee profile found."}, status=404)
+
+        active_cycle = PerformanceCycle.objects.filter(is_active=True).first()
+        if not active_cycle:
+            return Response({"detail": "No active performance cycle."}, status=404)
+
+        review, created = PerformanceReview.objects.get_or_create(
+            employee=profile,
+            cycle=active_cycle,
+            defaults={"status": "pending"}
+        )
+
+        serializer = SelfRatingSerializer(review)
+        return Response(serializer.data)
+
+    def post(self, request):
+        """Submit or update the current employee's self-rating."""
+        user = request.user
+        profile = user.get_employee_profile()
+        if profile is None:
+            return Response({"detail": "No employee profile found."}, status=404)
+
+        active_cycle = PerformanceCycle.objects.filter(is_active=True).first()
+        if not active_cycle:
+            return Response({"detail": "No active performance cycle."}, status=400)
+
+        review, created = PerformanceReview.objects.get_or_create(
+            employee=profile,
+            cycle=active_cycle,
+            defaults={"status": "pending"}
+        )
+
+        self_communication = request.data.get("self_communication_score")
+        self_productivity = request.data.get("self_productivity_score")
+        self_innovation = request.data.get("self_innovation_score")
+        self_comment = request.data.get("self_comment", "")
+
+        if self_communication is not None:
+            review.self_communication_score = self_communication
+        if self_productivity is not None:
+            review.self_productivity_score = self_productivity
+        if self_innovation is not None:
+            review.self_innovation_score = self_innovation
+        review.self_comment = self_comment
+
+        # Mark as self_assessed if all three scores are provided
+        if (self_communication and self_productivity and self_innovation and
+                review.status == "pending"):
+            review.status = "self_assessed"
+
+        review.save()
+
+        # Notify department head(s) about the new self-assessment
+        if review.status == "self_assessed":
+            dept = review.employee.department
+            if dept and dept.head:
+                Notification = apps.get_model("notifications", "Notification")
+                Notification.objects.create(
+                    recipient=dept.head,
+                    title="Self Assessment Submitted",
+                    message=f"{review.employee.full_name} has submitted their self assessment for {review.cycle.name}.",
+                    category="evaluation",
+                    link=f"/evaluation/reviews/{review.id}/",
+                )
+
+        serializer = SelfRatingSerializer(review)
         return Response(serializer.data, status=200)
 
 

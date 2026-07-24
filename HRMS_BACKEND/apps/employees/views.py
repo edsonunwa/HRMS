@@ -73,6 +73,15 @@ class EmployeeListCreateView(AuditLogMixin, generics.ListCreateAPIView):
             return EmployeeCreateSerializer
         return EmployeeListSerializer
 
+    def get_queryset(self):
+        user = self.request.user
+        qs = Employee.objects.select_related('user', 'department', 'position').all()
+        if user.role == "department_head":
+            profile = user.get_employee_profile()
+            if profile is not None and profile.department is not None:
+                qs = qs.filter(department=profile.department)
+        return qs
+
 
 class EmployeeDetailView(AuditLogMixin, generics.RetrieveUpdateDestroyAPIView):
     queryset           = Employee.objects.select_related('user', 'department', 'position', 'grade').all()

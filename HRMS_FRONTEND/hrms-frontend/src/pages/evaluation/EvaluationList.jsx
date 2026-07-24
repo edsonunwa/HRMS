@@ -6,6 +6,8 @@ import DataTable from '../../components/common/DataTable';
 import FormModal from '../../components/common/FormModal';
 import StatusBadge from '../../components/common/StatusBadge';
 import EmployeePicker from '../../components/common/EmployeePicker';
+import ManagerRating from '../../components/evaluation/ManagerRating';
+import SelfRating from '../../components/evaluation/SelfRating';
 import { useApiResource } from '../../hooks/useApiResource';
 import { useSearch } from '../../hooks/useSearch';
 import { useAuth } from '../../context/AuthContext';
@@ -681,10 +683,15 @@ function DashboardTab() {
 
 export default function EvaluationList() {
   const { user } = useAuth();
-  const [tab, setTab] = useState('dashboard');
+  const isEmployee = user?.role === 'employee';
+  const isManager = IS_DEPARTMENT_HEAD_OR_ABOVE.includes(user?.role);
   const canManageCycles = IS_HR_OR_ADMIN.includes(user?.role);
   const canManageReviews = IS_DEPARTMENT_HEAD_OR_ABOVE.includes(user?.role);
   const canManageJobEval = IS_HR_OR_ADMIN.includes(user?.role);
+  const canManageRating = IS_DEPARTMENT_HEAD_OR_ABOVE.includes(user?.role);
+
+  // Employees default to 'selfRating' tab, managers default to 'dashboard'
+  const [tab, setTab] = useState(isEmployee ? 'selfRating' : 'dashboard');
 
   return (
     <DashboardLayout portalLabel="Performance Evaluation" searchPlaceholder="Search reviews…">
@@ -696,22 +703,38 @@ export default function EvaluationList() {
       </div>
 
       <div className={styles.tabs}>
-        <button className={`${styles.tab} ${tab === 'dashboard' ? styles.tabActive : ''}`} onClick={() => setTab('dashboard')}>Dashboard</button>
-        <button className={`${styles.tab} ${tab === 'reviews' ? styles.tabActive : ''}`} onClick={() => setTab('reviews')}>Reviews</button>
-        <button className={`${styles.tab} ${tab === 'kpis' ? styles.tabActive : ''}`} onClick={() => setTab('kpis')}>KPIs</button>
+        {/* Employees only see Self Rating */}
+        {isEmployee && (
+          <button className={`${styles.tab} ${tab === 'selfRating' ? styles.tabActive : ''}`} onClick={() => setTab('selfRating')}>Self Rating</button>
+        )}
+        {/* Managers/HR see Dashboard, Reviews, KPIs, etc. */}
+        {isManager && (
+          <button className={`${styles.tab} ${tab === 'dashboard' ? styles.tabActive : ''}`} onClick={() => setTab('dashboard')}>Dashboard</button>
+        )}
+        {isManager && (
+          <button className={`${styles.tab} ${tab === 'reviews' ? styles.tabActive : ''}`} onClick={() => setTab('reviews')}>Reviews</button>
+        )}
+        {isManager && (
+          <button className={`${styles.tab} ${tab === 'kpis' ? styles.tabActive : ''}`} onClick={() => setTab('kpis')}>KPIs</button>
+        )}
         {canManageCycles && (
           <button className={`${styles.tab} ${tab === 'cycles' ? styles.tabActive : ''}`} onClick={() => setTab('cycles')}>Cycles</button>
         )}
         {canManageJobEval && (
           <button className={`${styles.tab} ${tab === 'jobEval' ? styles.tabActive : ''}`} onClick={() => setTab('jobEval')}>Job Evaluations</button>
         )}
+        {canManageRating && (
+          <button className={`${styles.tab} ${tab === 'ratings' ? styles.tabActive : ''}`} onClick={() => setTab('ratings')}>Manager Rating</button>
+        )}
       </div>
 
+      {tab === 'selfRating' && <SelfRating />}
       {tab === 'dashboard' && <DashboardTab />}
       {tab === 'reviews' && <ReviewsTab canWrite={canManageReviews} />}
       {tab === 'kpis' && <KPIsTab />}
       {tab === 'cycles' && canManageCycles && <CyclesTab canWrite={canManageCycles} />}
       {tab === 'jobEval' && canManageJobEval && <JobEvaluationsTab />}
+      {tab === 'ratings' && canManageRating && <ManagerRating />}
     </DashboardLayout>
   );
 }
